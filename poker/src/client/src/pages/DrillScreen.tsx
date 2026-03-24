@@ -114,8 +114,9 @@ export default function DrillScreen({ board, config, onSubmit }: DrillScreenProp
     }
   }, [config.timerEnabled, startTime]);
 
-  // Set of excluded card keys — board cards + first card in progress only.
-  // Per CR-002: holdings do NOT exclude cards; the same card may appear in multiple holdings.
+  // Set of unavailable card keys (board cards + first card in progress only).
+  // Per CR-002: cards used in holdings are NOT excluded — the same card may
+  // appear in multiple holdings. Only the 5 board cards are blocked.
   const usedCards = new Set<number>([
     ...board.map(cardKey),
     ...(firstCard ? [cardKey(firstCard)] : []),
@@ -544,25 +545,26 @@ export default function DrillScreen({ board, config, onSubmit }: DrillScreenProp
                       {holding.handName}
                     </span>
 
-                    {/* Controls: reorder + remove with gap to prevent mis-taps */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => handleMoveHolding(index, 'up')}
-                        disabled={index === 0}
-                        className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
-                        data-testid={`button-move-up-${index}`}
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleMoveHolding(index, 'down')}
-                        disabled={index === holdings.length - 1}
-                        className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
-                        data-testid={`button-move-down-${index}`}
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                      <div className="w-2" /> {/* Spacer between reorder and remove */}
+                    {/* Controls: reorder group + remove, with gap between them */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          onClick={() => handleMoveHolding(index, 'up')}
+                          disabled={index === 0}
+                          className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
+                          data-testid={`button-move-up-${index}`}
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveHolding(index, 'down')}
+                          disabled={index === holdings.length - 1}
+                          className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
+                          data-testid={`button-move-down-${index}`}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </div>
                       <button
                         onClick={() => handleRemoveHolding(index)}
                         className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-destructive/20 text-destructive transition-colors"
