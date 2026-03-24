@@ -114,10 +114,10 @@ export default function DrillScreen({ board, config, onSubmit }: DrillScreenProp
     }
   }, [config.timerEnabled, startTime]);
 
-  // Set of used card keys (board + holdings + first card in progress)
+  // Set of excluded card keys — board cards + first card in progress only.
+  // Per CR-002: holdings do NOT exclude cards; the same card may appear in multiple holdings.
   const usedCards = new Set<number>([
     ...board.map(cardKey),
-    ...holdings.flatMap(h => h.cards.map(cardKey)),
     ...(firstCard ? [cardKey(firstCard)] : []),
   ]);
 
@@ -544,30 +544,31 @@ export default function DrillScreen({ board, config, onSubmit }: DrillScreenProp
                       {holding.handName}
                     </span>
 
-                    {/* Controls */}
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                    {/* Controls: reorder + remove with gap to prevent mis-taps */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={() => handleMoveHolding(index, 'up')}
                         disabled={index === 0}
-                        className="p-1 rounded hover:bg-secondary disabled:opacity-20 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
                         data-testid={`button-move-up-${index}`}
                       >
-                        <ChevronUp className="w-3.5 h-3.5" />
+                        <ChevronUp className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleMoveHolding(index, 'down')}
                         disabled={index === holdings.length - 1}
-                        className="p-1 rounded hover:bg-secondary disabled:opacity-20 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-secondary disabled:opacity-20 transition-colors"
                         data-testid={`button-move-down-${index}`}
                       >
-                        <ChevronDown className="w-3.5 h-3.5" />
+                        <ChevronDown className="w-4 h-4" />
                       </button>
+                      <div className="w-2" /> {/* Spacer between reorder and remove */}
                       <button
                         onClick={() => handleRemoveHolding(index)}
-                        className="p-1 rounded hover:bg-destructive/20 text-destructive transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-md hover:bg-destructive/20 text-destructive transition-colors"
                         data-testid={`button-remove-${index}`}
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
