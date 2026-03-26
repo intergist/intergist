@@ -1,0 +1,729 @@
+/* ═══════════════════════════════════════════════════════════════
+   Polyculy — Privacy-first relationship-aware scheduling
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    --pc-primary: #7C3AED;
+    --pc-primary-dark: #6D28D9;
+    --pc-primary-light: #A78BFA;
+    --pc-pink: #EC4899;
+    --pc-lavender: #C4B5FD;
+    --pc-gradient: linear-gradient(135deg, #E9D5FF, #FBCFE8, #C4B5FD);
+    --pc-gradient-dark: linear-gradient(135deg, #7C3AED, #EC4899);
+    --pc-body-text: #374151;
+    --pc-heading-text: #6D28D9;
+    --pc-card-bg: rgba(255, 255, 255, 0.9);
+    --pc-card-shadow: 0 4px 20px rgba(124, 58, 237, 0.1);
+    --pc-status-connected: #22C55E;
+    --pc-status-awaiting-confirm: #3B82F6;
+    --pc-status-awaiting-signup: #F59E0B;
+    --pc-status-licence-gifted: #A855F7;
+    --pc-status-revoked: #EF4444;
+    --pc-border-radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--pc-body-text);
+    background: #F9FAFB;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6, .heading {
+    color: var(--pc-heading-text);
+    font-weight: 600;
+}
+
+/* ── Navbar ── */
+.polyculy-navbar {
+    background: white;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    box-shadow: 0 2px 10px rgba(124, 58, 237, 0.05);
+    padding: 0.5rem 1rem;
+}
+
+.polyculy-navbar .brand-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--pc-primary);
+    letter-spacing: -0.02em;
+}
+
+.polyculy-navbar .nav-link {
+    color: var(--pc-body-text);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.polyculy-navbar .nav-link:hover,
+.polyculy-navbar .nav-link.active {
+    color: var(--pc-primary);
+    background: rgba(124, 58, 237, 0.05);
+}
+
+.notif-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.notif-dropdown {
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    border-radius: var(--pc-border-radius);
+}
+
+/* ── Main Content ── */
+.main-content {
+    min-height: calc(100vh - 120px);
+    padding: 1.5rem;
+}
+
+/* ── Auth Pages ── */
+.auth-bg {
+    min-height: 100vh;
+    background: var(--pc-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-bg::before,
+.auth-bg::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.1;
+}
+
+.auth-bg::before {
+    width: 400px;
+    height: 400px;
+    background: var(--pc-pink);
+    top: -100px;
+    right: -100px;
+}
+
+.auth-bg::after {
+    width: 300px;
+    height: 300px;
+    background: var(--pc-primary);
+    bottom: -80px;
+    left: -80px;
+}
+
+/* Floating hearts */
+.floating-heart {
+    position: absolute;
+    color: rgba(124, 58, 237, 0.1);
+    font-size: 2rem;
+    animation: floatHeart 6s ease-in-out infinite;
+}
+
+.floating-heart:nth-child(2) { animation-delay: 1s; left: 15%; top: 20%; font-size: 1.5rem; }
+.floating-heart:nth-child(3) { animation-delay: 2s; right: 20%; top: 30%; font-size: 2.5rem; }
+.floating-heart:nth-child(4) { animation-delay: 3s; left: 30%; bottom: 20%; }
+.floating-heart:nth-child(5) { animation-delay: 4s; right: 10%; bottom: 30%; font-size: 1.8rem; }
+
+@keyframes floatHeart {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(10deg); }
+}
+
+.auth-card {
+    background: var(--pc-card-bg);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(124, 58, 237, 0.15);
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    z-index: 10;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-logo svg { width: 60px; height: 60px; }
+
+.auth-logo h1 {
+    font-size: 1.8rem;
+    color: var(--pc-primary);
+    margin: 0.5rem 0 0;
+    letter-spacing: -0.02em;
+}
+
+.auth-logo .tagline {
+    color: var(--pc-pink);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ── Cards ── */
+.polyculy-card {
+    background: var(--pc-card-bg);
+    border: none;
+    border-radius: var(--pc-border-radius);
+    box-shadow: var(--pc-card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.polyculy-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(124, 58, 237, 0.15);
+}
+
+.polyculy-card .card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    padding: 1rem 1.25rem;
+}
+
+/* ── Buttons ── */
+.btn-polyculy {
+    background: var(--pc-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-polyculy:hover {
+    background: var(--pc-primary-dark);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn-polyculy-outline {
+    background: transparent;
+    color: var(--pc-primary);
+    border: 2px solid var(--pc-primary);
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-polyculy-outline:hover {
+    background: var(--pc-primary);
+    color: white;
+}
+
+.btn-polyculy-ghost {
+    background: transparent;
+    color: var(--pc-primary);
+    border: none;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.btn-polyculy-ghost:hover {
+    background: rgba(124, 58, 237, 0.05);
+    color: var(--pc-primary-dark);
+}
+
+.btn-polyculy-pink {
+    background: var(--pc-pink);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+}
+
+.btn-polyculy-pink:hover {
+    background: #DB2777;
+    color: white;
+}
+
+/* ── Connection Status Badges ── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    gap: 0.35rem;
+}
+
+.status-badge .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-connected { background: rgba(34, 197, 94, 0.1); color: #16A34A; }
+.status-connected .status-dot { background: var(--pc-status-connected); }
+
+.status-awaiting_confirmation { background: rgba(59, 130, 246, 0.1); color: #2563EB; }
+.status-awaiting_confirmation .status-dot { background: var(--pc-status-awaiting-confirm); }
+
+.status-awaiting_signup { background: rgba(245, 158, 11, 0.1); color: #D97706; }
+.status-awaiting_signup .status-dot { background: var(--pc-status-awaiting-signup); }
+
+.status-licence_gifted_awaiting_signup { background: rgba(168, 85, 247, 0.1); color: #7C3AED; }
+.status-licence_gifted_awaiting_signup .status-dot { background: var(--pc-status-licence-gifted); }
+
+.status-revoked { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+.status-revoked .status-dot { background: var(--pc-status-revoked); }
+
+/* ── Polycule Sidebar ── */
+.polycule-sidebar {
+    background: white;
+    border-radius: var(--pc-border-radius);
+    box-shadow: var(--pc-card-shadow);
+    padding: 1.25rem;
+}
+
+.polycule-sidebar h5 {
+    color: var(--pc-heading-text);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+.polycule-member {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.polycule-member:hover {
+    background: rgba(124, 58, 237, 0.05);
+}
+
+.polycule-member .member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.polycule-member .member-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+/* ── Calendar ── */
+.calendar-container {
+    background: white;
+    border-radius: var(--pc-border-radius);
+    box-shadow: var(--pc-card-shadow);
+    overflow: hidden;
+}
+
+.calendar-header {
+    background: var(--pc-gradient);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.calendar-header h3 {
+    color: var(--pc-primary-dark);
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.calendar-nav-btn {
+    background: white;
+    border: none;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pc-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.calendar-nav-btn:hover {
+    background: var(--pc-primary);
+    color: white;
+}
+
+.mine-our-toggle {
+    display: inline-flex;
+    background: rgba(124, 58, 237, 0.1);
+    border-radius: 20px;
+    padding: 3px;
+}
+
+.mine-our-toggle .toggle-btn {
+    padding: 0.3rem 1rem;
+    border-radius: 18px;
+    border: none;
+    background: transparent;
+    color: var(--pc-primary);
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.mine-our-toggle .toggle-btn.active {
+    background: var(--pc-primary);
+    color: white;
+}
+
+/* Month View */
+.month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-top: 1px solid #E5E7EB;
+}
+
+.month-grid .day-header {
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--pc-primary);
+    text-transform: uppercase;
+    background: rgba(124, 58, 237, 0.03);
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.month-grid .day-cell {
+    min-height: 100px;
+    padding: 0.25rem;
+    border-right: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F3F4F6;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.month-grid .day-cell:hover {
+    background: rgba(124, 58, 237, 0.02);
+}
+
+.month-grid .day-cell .day-number {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.15rem 0.4rem;
+    border-radius: 50%;
+    display: inline-block;
+    min-width: 24px;
+    text-align: center;
+}
+
+.month-grid .day-cell.today .day-number {
+    background: var(--pc-primary);
+    color: white;
+}
+
+.month-grid .day-cell.other-month {
+    opacity: 0.4;
+}
+
+.event-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 1px;
+}
+
+.event-mini {
+    font-size: 0.7rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+    cursor: pointer;
+}
+
+/* Week/Day View */
+.week-grid {
+    display: grid;
+    position: relative;
+}
+
+.week-grid .time-slot {
+    height: 60px;
+    border-bottom: 1px solid #F3F4F6;
+    position: relative;
+}
+
+.week-grid .time-label {
+    font-size: 0.7rem;
+    color: #9CA3AF;
+    padding: 2px 8px;
+    position: sticky;
+    left: 0;
+}
+
+.week-grid .event-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 5;
+    color: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.current-time-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #EF4444;
+    z-index: 10;
+}
+
+.current-time-line::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: #EF4444;
+    border-radius: 50%;
+    position: absolute;
+    top: -3px;
+    left: -4px;
+}
+
+/* ── Bottom Filter Bar ── */
+.filter-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid rgba(124, 58, 237, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    padding: 0.5rem 1rem;
+    z-index: 1000;
+    display: none;
+}
+
+.filter-bar.active {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+}
+
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    opacity: 0.5;
+}
+
+.filter-pill.active {
+    opacity: 1;
+}
+
+.filter-pill .pill-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* ── Event Cards ── */
+.event-card {
+    background: white;
+    border-radius: var(--pc-border-radius);
+    border-left: 4px solid var(--pc-primary);
+    box-shadow: var(--pc-card-shadow);
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.event-card:hover {
+    transform: translateX(4px);
+}
+
+.event-card.tentative {
+    border-left-color: var(--pc-status-awaiting-signup);
+    opacity: 0.85;
+}
+
+.event-card.active-event {
+    border-left-color: var(--pc-status-connected);
+}
+
+.event-card .event-time {
+    font-size: 0.8rem;
+    color: #6B7280;
+    font-weight: 500;
+}
+
+.event-card .event-title {
+    font-weight: 600;
+    color: var(--pc-heading-text);
+}
+
+/* ── Invitation Card ── */
+.invitation-card {
+    background: var(--pc-gradient);
+    border-radius: var(--pc-border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.invitation-card .participant-avatars {
+    display: flex;
+    gap: -0.5rem;
+}
+
+.invitation-card .participant-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: -8px;
+}
+
+.invitation-card .participant-avatar:first-child {
+    margin-left: 0;
+}
+
+/* ── Modals ── */
+.modal-content {
+    border: none;
+    border-radius: var(--pc-border-radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    background: var(--pc-gradient);
+    border-bottom: none;
+    border-radius: var(--pc-border-radius) var(--pc-border-radius) 0 0;
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-header .modal-title {
+    color: var(--pc-heading-text);
+    font-weight: 600;
+}
+
+.modal-body { padding: 1.5rem; }
+
+.modal-footer {
+    border-top: 1px solid rgba(124, 58, 237, 0.1);
+    padding: 1rem 1.5rem;
+}
+
+/* ── Forms ── */
+.form-control:focus, .form-select:focus {
+    border-color: var(--pc-primary-light);
+    box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.15);
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #4B5563;
+}
+
+/* ── Shared Event State Badges ── */
+.badge-tentative {
+    background: rgba(245, 158, 11, 0.1);
+    color: #D97706;
+    font-weight: 600;
+}
+
+.badge-active-event {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16A34A;
+    font-weight: 600;
+}
+
+.badge-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    color: #DC2626;
+    font-weight: 600;
+}
+
+/* ── Response Status ── */
+.response-accepted { color: #16A34A; }
+.response-declined { color: #DC2626; }
+.response-pending { color: #D97706; }
+.response-maybe { color: #3B82F6; }
+
+/* ── Visibility Tier Icons ── */
+.vis-invisible { color: #9CA3AF; }
+.vis-full_details { color: var(--pc-primary); }
+.vis-busy_block { color: var(--pc-pink); }
+
+/* ── Footer ── */
+.app-footer {
+    border-top: 1px solid rgba(124, 58, 237, 0.05);
+    padding: 0.75rem;
+}
+
+/* ── Utilities ── */
+.text-purple { color: var(--pc-primary) !important; }
+.bg-purple-light { background: rgba(124, 58, 237, 0.05); }
+.border-purple { border-color: var(--pc-primary) !important; }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9CA3AF;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--pc-lavender);
+    margin-bottom: 1rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .main-content { padding: 1rem 0.75rem; }
+    .month-grid .day-cell { min-height: 60px; }
+    .auth-card { margin: 1rem; padding: 1.5rem; }
+}
