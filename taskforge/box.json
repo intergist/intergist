@@ -1,0 +1,12 @@
+{
+    "name":"TaskForge",
+    "version":"1.0.0",
+    "description":"Task/Project Manager - ColdFusion + Bootstrap + MSSQL",
+    "type":"projects",
+    "dependencies":{
+        "cfconfig-services":"^2.7.8"
+    },
+    "installPaths":{
+        "cfconfig-services":"modules/cfconfig-services/"
+    }
+}

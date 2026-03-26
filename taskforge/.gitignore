@@ -1,0 +1,26 @@
+# CommandBox
+.CommandBox/
+server-*.json
+.cfconfig.json
+modules/
+
+# Lucee
+WEB-INF/
+
+# H2 database files
+data/*.db
+data/*.lock.db
+data/*.trace.db
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
