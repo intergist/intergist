@@ -1,147 +1,127 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polyculy - Sign Up</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="/assets/css/polyculy.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-</head>
-<body>
-    <div class="auth-bg">
-        <i class="fas fa-heart floating-heart" style="left:10%; top:15%;"></i>
-        <i class="fas fa-heart floating-heart"></i>
-        <i class="fas fa-heart floating-heart"></i>
-        <i class="fas fa-heart floating-heart"></i>
-        <i class="fas fa-heart floating-heart"></i>
+<cf_main pageTitle="Sign Up" showNav="false">
+<cfoutput>
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-logo-area">
+            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
+                <path d="M12 8C7 8 3 12 3 17C3 27 20 36 20 36C20 36 37 27 37 17C37 12 33 8 28 8C24.5 8 21.5 10 20 13C18.5 10 15.5 8 12 8Z" fill="url(##hg1)" opacity="0.7"/>
+                <path d="M15 6C10 6 6 10 6 15C6 25 23 34 23 34C23 34 40 25 40 15C40 10 36 6 31 6C27.5 6 24.5 8 23 11C21.5 8 18.5 6 15 6Z" fill="url(##hg2)" opacity="0.8"/>
+                <defs>
+                    <linearGradient id="hg1" x1="3" y1="8" x2="37" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="##EC4899"/><stop offset="1" stop-color="##8B5CF6"/></linearGradient>
+                    <linearGradient id="hg2" x1="6" y1="6" x2="40" y2="34" gradientUnits="userSpaceOnUse"><stop stop-color="##A855F7"/><stop offset="1" stop-color="##7C3AED"/></linearGradient>
+                </defs>
+            </svg>
+            <h1 class="auth-title" style="font-size:1.6rem;">Welcome to Polyculy!</h1>
+        </div>
 
-        <div class="auth-card" style="max-width:480px;">
-            <div class="auth-logo">
-                <svg width="50" height="50" viewBox="0 0 40 40">
-                    <defs>
-                        <linearGradient id="hg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#7C3AED"/><stop offset="100%" style="stop-color:#EC4899"/>
-                        </linearGradient>
-                        <linearGradient id="hg2" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#EC4899"/><stop offset="100%" style="stop-color:#C4B5FD"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="url(#hg1)" transform="translate(2,5) scale(0.8)"/>
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="url(#hg2)" transform="translate(12,8) scale(0.8)" opacity="0.8"/>
-                </svg>
-                <h1>Join Polyculy</h1>
-                <p class="tagline">You'll need a licence code to get started</p>
-            </div>
-
-            <div id="signupError" class="alert alert-danger d-none"></div>
-            <div id="signupSuccess" class="alert alert-success d-none"></div>
-
-            <form id="signupForm" onsubmit="return doSignup();">
-                <div class="mb-3">
-                    <label for="licenceCode" class="form-label">Licence Code</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-key text-purple"></i></span>
-                        <input type="text" class="form-control" id="licenceCode" placeholder="POLY-XXXX-XXX" required>
-                        <button type="button" class="btn btn-polyculy-outline" onclick="validateLicence()">Verify</button>
-                    </div>
-                    <div id="licenceStatus" class="form-text"></div>
-                </div>
-                <div class="mb-3">
-                    <label for="displayName" class="form-label">Display Name</label>
-                    <input type="text" class="form-control" id="displayName" placeholder="How others will see you" required>
-                </div>
-                <div class="mb-3">
-                    <label for="signupEmail" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="signupEmail" placeholder="you@example.com" required>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="signupPassword" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="signupPassword" minlength="6" required>
-                    </div>
-                    <div class="col">
-                        <label for="confirmPassword" class="form-label">Confirm</label>
-                        <input type="password" class="form-control" id="confirmPassword" minlength="6" required>
+        <!--- Step 1: Email + Licence Code --->
+        <div id="signupStep1">
+            <form id="signupForm1" onsubmit="return handleSignupStep1(event)">
+                <div class="form-floating-group">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="signupEmail" class="form-control" placeholder="Email Address" required>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label for="timezoneId" class="form-label">Timezone</label>
-                    <select class="form-select" id="timezoneId">
-                        <option value="America/New_York">Eastern (New York)</option>
-                        <option value="America/Chicago">Central (Chicago)</option>
-                        <option value="America/Denver">Mountain (Denver)</option>
-                        <option value="America/Los_Angeles">Pacific (Los Angeles)</option>
-                        <option value="Europe/London">GMT (London)</option>
-                        <option value="Europe/Paris">CET (Paris)</option>
-                        <option value="Asia/Tokyo">JST (Tokyo)</option>
-                        <option value="Australia/Sydney">AEST (Sydney)</option>
-                    </select>
+                <div class="form-floating-group">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-key input-icon"></i>
+                        <input type="text" id="signupLicenceCode" class="form-control" placeholder="Licence Code" required>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-polyculy w-100 py-2 mb-3" id="signupBtn">
-                    <i class="fas fa-user-plus me-2"></i>Create Account
-                </button>
+                <p class="auth-helper-text">Enter a licence code you received by gift, promo, or purchase.</p>
+                <p class="auth-helper-text" style="font-size:0.75rem;">New users may receive their own licence for free during promo/seeding periods; additional licences for partners may require a purchased pack.</p>
+                <div class="form-message" id="signupMessage1" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary-purple w-100" id="signupBtn1">Continue</button>
             </form>
+        </div>
 
-            <div class="text-center">
-                <a href="/index.cfm" class="text-decoration-none" style="color: var(--pc-primary);">
-                    <small>Already have an account? <strong>Sign in</strong></small>
-                </a>
-            </div>
+        <!--- Step 2: Set Password + Display Name --->
+        <div id="signupStep2" style="display:none;">
+            <form id="signupForm2" onsubmit="return handleSignupStep2(event)">
+                <div class="form-floating-group">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" id="signupDisplayName" class="form-control" placeholder="Display Name" required>
+                    </div>
+                </div>
+                <div class="form-floating-group">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="signupPassword" class="form-control" placeholder="Password (min 6 characters)" required minlength="6">
+                    </div>
+                </div>
+                <div class="form-floating-group">
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="signupPasswordConfirm" class="form-control" placeholder="Confirm Password" required minlength="6">
+                    </div>
+                </div>
+                <div class="form-message" id="signupMessage2" style="display:none;"></div>
+                <button type="submit" class="btn btn-primary-purple w-100" id="signupBtn2">Create Account</button>
+            </form>
+        </div>
+
+        <div class="auth-links">
+            Already a member? <a href="/views/auth/login.cfm"><strong>Log in</strong></a>
         </div>
     </div>
+</div>
 
-    <script>
-    function validateLicence() {
-        var code = $('#licenceCode').val().trim();
-        if (!code) return;
-        $.getJSON('/api/licences.cfm?action=validate&code=' + encodeURIComponent(code), function(r) {
-            var data = r.DATA || r.data || {};
-            if (data.VALID || data.valid) {
-                $('#licenceStatus').html('<span class="text-success"><i class="fas fa-check-circle"></i> Valid licence</span>');
-            } else {
-                $('#licenceStatus').html('<span class="text-danger"><i class="fas fa-times-circle"></i> Invalid or used code</span>');
-            }
-        });
-    }
+<script>
+var signupData = {};
 
-    function doSignup() {
-        $('#signupError').addClass('d-none');
-        if ($('#signupPassword').val() !== $('#confirmPassword').val()) {
-            $('#signupError').removeClass('d-none').text('Passwords do not match');
-            return false;
+function handleSignupStep1(e) {
+    e.preventDefault();
+    var email = $('##signupEmail').val().trim();
+    var code = $('##signupLicenceCode').val().trim();
+    $('##signupBtn1').prop('disabled', true).text('Validating...');
+    $('##signupMessage1').hide();
+
+    Polyculy.signup(email, code).done(function(resp) {
+        if (resp.success && resp.step === 'set_password') {
+            signupData.email = resp.email;
+            signupData.licenceCode = resp.licencecode;
+            $('##signupStep1').hide();
+            $('##signupStep2').show();
+        } else {
+            $('##signupMessage1').text(resp.message || 'Validation failed.').addClass('error').show();
         }
-        var $btn = $('#signupBtn');
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+    }).fail(function() {
+        $('##signupMessage1').text('Connection error.').addClass('error').show();
+    }).always(function() {
+        $('##signupBtn1').prop('disabled', false).text('Continue');
+    });
+    return false;
+}
 
-        $.ajax({
-            url: '/api/auth.cfm?action=signup',
-            method: 'POST',
-            data: {
-                licence_code: $('#licenceCode').val(),
-                display_name: $('#displayName').val(),
-                email: $('#signupEmail').val(),
-                password: $('#signupPassword').val(),
-                timezone_id: $('#timezoneId').val()
-            },
-            dataType: 'json',
-            success: function(resp) {
-                if (resp.SUCCESS || resp.success) {
-                    window.location.href = resp.REDIRECT || resp.redirect || '/views/calendar/setup.cfm';
-                } else {
-                    $('#signupError').removeClass('d-none').text(resp.MESSAGE || resp.message);
-                    $btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Create Account');
-                }
-            },
-            error: function() {
-                $('#signupError').removeClass('d-none').text('Connection error');
-                $btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Create Account');
-            }
-        });
+function handleSignupStep2(e) {
+    e.preventDefault();
+    var password = $('##signupPassword').val();
+    var confirm = $('##signupPasswordConfirm').val();
+    var displayName = $('##signupDisplayName').val().trim();
+    $('##signupMessage2').hide();
+
+    if (password !== confirm) {
+        $('##signupMessage2').text('Passwords do not match.').addClass('error').show();
         return false;
     }
-    </script>
-</body>
-</html>
+
+    $('##signupBtn2').prop('disabled', true).text('Creating account...');
+
+    Polyculy.completeSignup(signupData.email, password, signupData.licenceCode, displayName).done(function(resp) {
+        if (resp.success) {
+            window.location.href = '/views/calendar/setup.cfm';
+        } else {
+            $('##signupMessage2').text(resp.message || 'Signup failed.').addClass('error').show();
+        }
+    }).fail(function() {
+        $('##signupMessage2').text('Connection error.').addClass('error').show();
+    }).always(function() {
+        $('##signupBtn2').prop('disabled', false).text('Create Account');
+    });
+    return false;
+}
+</script>
+</cfoutput>
+</cf_main>

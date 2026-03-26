@@ -1,61 +1,87 @@
-<cf_main pageTitle="Review Proposals" activePage="calendar">
-
-<div class="container" style="max-width:700px;">
-    <h2 class="mb-4"><i class="fas fa-calendar-check me-2"></i>Proposal Review</h2>
-    <cfoutput>
-    <p class="text-muted">Review time proposals for event ID: <strong>#url.event_id ?: "N/A"#</strong></p>
-    </cfoutput>
-
-    <div id="proposalReviewList">
-        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-purple"></i></div>
+<cf_main pageTitle="Review Proposals" showNav="true">
+<cfoutput>
+<div class="page-container">
+    <div class="page-header">
+        <h2 class="page-title"><i class="fas fa-clipboard-list me-2"></i>Proposed New Times</h2>
     </div>
 
-    <a href="javascript:history.back()" class="btn btn-polyculy-outline mt-3">
-        <i class="fas fa-arrow-left me-1"></i>Back
-    </a>
+    <div class="card-polyculy" style="max-width:700px;" id="proposalArea">
+        <div class="card-header-poly"><h5 id="eventTitle">Loading event...</h5></div>
+        <div class="card-body-poly" id="proposalList">
+            <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+    </div>
+
+    <div class="alert-inline info mt-3" style="position:static;max-width:700px;">
+        <i class="fas fa-exclamation-triangle me-1"></i>Accepting a proposal updates the event time, resets all participant acceptances to Pending, and notifies all participants.
+    </div>
 </div>
 
 <script>
-$(function() {
-    var eid = new URLSearchParams(window.location.search).get('event_id');
-    if (!eid) return;
+var eventId = new URLSearchParams(window.location.search).get('id');
 
-    $.getJSON('/api/proposals.cfm?action=listForEvent&event_id=' + eid, function(r) {
-        var data = r.DATA || r.data || [];
-        var html = '';
-        if (data.length === 0) {
-            html = '<div class="empty-state"><i class="fas fa-inbox"></i><h5>No Proposals</h5></div>';
-        } else {
-            data.forEach(function(p) {
-                var pid = p.PROPOSAL_ID || p.proposal_id;
-                var name = p.PROPOSER_NAME || p.proposer_name;
-                var status = p.STATUS || p.status;
-                var msg = p.MESSAGE || p.message || '';
-                var pstart = p.PROPOSED_START || p.proposed_start;
-                var pend = p.PROPOSED_END || p.proposed_end;
-
-                html += '<div class="event-card mb-3">';
-                html += '<div class="d-flex justify-content-between align-items-start">';
-                html += '<div>';
-                html += '<h5 class="mb-1">' + name + '</h5>';
-                html += '<p class="mb-1"><i class="fas fa-clock me-1"></i>' + pstart + ' — ' + pend + '</p>';
-                if (msg) html += '<p class="text-muted small mb-0">"' + msg + '"</p>';
-                html += '</div>';
-                html += '<span class="badge badge-' + (status === 'active' ? 'tentative' : status === 'accepted' ? 'active-event' : 'cancelled') + '">' + status + '</span>';
-                html += '</div>';
-
-                if (status === 'active') {
-                    html += '<div class="mt-3 text-end">';
-                    html += '<button class="btn btn-success me-2" onclick="Polyculy.acceptProposal(' + pid + ')"><i class="fas fa-check me-1"></i>Accept</button>';
-                    html += '<button class="btn btn-danger" onclick="Polyculy.rejectProposal(' + pid + ')"><i class="fas fa-times me-1"></i>Reject</button>';
-                    html += '</div>';
-                }
-                html += '</div>';
-            });
-        }
-        $('#proposalReviewList').html(html);
-    });
+$(document).ready(function() {
+    if (!eventId) return;
+    loadProposals();
 });
-</script>
 
+function loadProposals() {
+    Polyculy.apiGet('/api/shared-events.cfm?action=get&id=' + eventId).done(function(resp) {
+        if (!resp.success || !resp.data) return;
+        var ev = resp.data;
+        $('##eventTitle').text(ev.title || 'Shared Event');
+
+        var proposals = ev.proposals || [];
+        if (proposals.length === 0) {
+            $('##proposalList').html('<div class="text-muted py-3">No active proposals for this event.</div>');
+            return;
+        }
+
+        var html = '';
+        proposals.forEach(function(p) {
+            var statusClass = p.status || 'active';
+            html += '<div class="proposal-card mb-3">' +
+                '<div class="d-flex align-items-center gap-2 mb-2">' +
+                '<div class="member-avatar" style="width:32px;height:32px;font-size:0.75rem;">' + Polyculy.escapeHtml((p.proposer_name || '?').charAt(0)) + '</div>' +
+                '<div><strong>' + Polyculy.escapeHtml(p.proposer_name || 'Unknown') + '</strong>' +
+                '<span class="proposal-status ' + statusClass + ' ms-2">' + statusClass + '</span></div></div>' +
+                '<div class="inv-meta"><i class="far fa-clock me-1"></i>Proposed: ' +
+                Polyculy.formatDateTime(p.proposed_start) + ' &ndash; ' + Polyculy.formatTime(p.proposed_end) + '</div>';
+            if (p.message) html += '<div class="inv-meta"><i class="fas fa-comment me-1"></i>' + Polyculy.escapeHtml(p.message) + '</div>';
+
+            if (statusClass === 'active') {
+                html += '<div class="d-flex gap-2 mt-2">' +
+                    '<button class="btn btn-sm btn-primary-purple" onclick="acceptProposal(' + p.proposal_id + ')"><i class="fas fa-check me-1"></i>Accept</button>' +
+                    '<button class="btn btn-sm btn-outline-danger" onclick="rejectProposal(' + p.proposal_id + ')"><i class="fas fa-times me-1"></i>Reject</button></div>';
+            }
+            html += '</div>';
+        });
+        $('##proposalList').html(html);
+    });
+}
+
+function acceptProposal(proposalId) {
+    if (!confirm('Accept this proposal? This will update the event time and reset all participant acceptances.')) return;
+    Polyculy.apiPost('/api/shared-events.cfm?action=acceptProposal', { proposalId: proposalId }).done(function(resp) {
+        if (resp.success) {
+            Polyculy.showAlert('Proposal accepted! Event time updated.', 'success');
+            loadProposals();
+        } else {
+            Polyculy.showAlert(resp.message || 'Error.', 'error');
+        }
+    });
+}
+
+function rejectProposal(proposalId) {
+    Polyculy.apiPost('/api/shared-events.cfm?action=rejectProposal', { proposalId: proposalId }).done(function(resp) {
+        if (resp.success) {
+            Polyculy.showAlert('Proposal rejected.', 'success');
+            loadProposals();
+        } else {
+            Polyculy.showAlert(resp.message || 'Error.', 'error');
+        }
+    });
+}
+</script>
+</cfoutput>
 </cf_main>

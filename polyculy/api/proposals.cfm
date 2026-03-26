@@ -13,27 +13,27 @@
     try {
         switch (action) {
             case "listForEvent":
-                q = propSvc.getForEvent(url.event_id);
+                q = propSvc.getAllByEvent(url.event_id);
                 data = [];
                 for (row in q) { arrayAppend(data, row); }
                 response["data"] = data;
                 break;
 
             case "activeForEvent":
-                q = propSvc.getActiveForEvent(url.event_id);
+                q = propSvc.getActiveByEvent(url.event_id);
                 data = [];
                 for (row in q) { arrayAppend(data, row); }
                 response["data"] = data;
                 break;
 
             case "create":
-                newId = propSvc.create({
-                    shared_event_id: form.event_id,
-                    proposer_user_id: session.userId,
-                    proposed_start: form.proposed_start,
-                    proposed_end: form.proposed_end,
-                    message: form.message ?: ""
-                });
+                propSvc.create(
+                    form.event_id,
+                    session.userId,
+                    form.proposed_start,
+                    form.proposed_end,
+                    form.message ?: ""
+                );
 
                 // Notify organizer
                 evt = sharedSvc.getById(form.event_id);
@@ -41,33 +41,26 @@
                     notifSvc.create(evt.organizer_user_id, "proposal_received", "New Time Proposal", "#session.displayName# proposed a new time for ""#evt.title#"".", "shared_event", form.event_id);
                 }
 
-                auditSvc.log(session.userId, "proposal_create", "shared_event", form.event_id, "Proposed new time");
+                auditSvc.log("proposal_create", "shared_event", form.event_id, "Proposed new time", session.userId);
                 response["message"] = "Proposal submitted";
-                response["id"] = newId;
                 break;
 
             case "accept":
-                propSvc.accept(form.proposal_id);
-
-                prop = propSvc.getById(form.proposal_id);
-                notifSvc.create(prop.proposer_user_id, "proposal_accepted", "Proposal Accepted", "Your time proposal was accepted.", "shared_event", prop.shared_event_id);
-
-                auditSvc.log(session.userId, "proposal_accept", "shared_event", prop.shared_event_id, "Accepted time proposal");
-                response["message"] = "Proposal accepted — event time updated, acceptances reset";
+                result = propSvc.acceptProposal(form.proposal_id);
+                if (structKeyExists(result, "success") && !result.success) {
+                    response = result;
+                } else {
+                    response["message"] = "Proposal accepted — event time updated, acceptances reset";
+                }
                 break;
 
             case "reject":
-                propSvc.reject(form.proposal_id);
-
-                prop = propSvc.getById(form.proposal_id);
-                notifSvc.create(prop.proposer_user_id, "proposal_rejected", "Proposal Rejected", "Your time proposal was not accepted.", "shared_event", prop.shared_event_id);
-
-                auditSvc.log(session.userId, "proposal_reject", "shared_event", prop.shared_event_id, "Rejected time proposal");
+                propSvc.rejectProposal(form.proposal_id);
                 response["message"] = "Proposal rejected";
                 break;
 
             case "withdraw":
-                propSvc.withdraw(form.proposal_id);
+                propSvc.rejectProposal(form.proposal_id);
                 response["message"] = "Proposal withdrawn";
                 break;
 

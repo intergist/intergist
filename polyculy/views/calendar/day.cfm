@@ -1,46 +1,49 @@
-<cf_main pageTitle="Day View" activePage="calendar">
-
-<div class="container-fluid">
-    <div class="calendar-container">
-        <div class="calendar-header">
-            <div class="d-flex align-items-center gap-3">
-                <button class="calendar-nav-btn" onclick="Polyculy.calNavPrev()">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <h3 id="calTitle">Wednesday, March 25, 2026</h3>
-                <button class="calendar-nav-btn" onclick="Polyculy.calNavNext()">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-                <button class="btn btn-sm btn-polyculy-outline" onclick="Polyculy.calToday()">Today</button>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="mine-our-toggle">
-                    <button class="toggle-btn active" id="toggleMine" onclick="Polyculy.setCalMode('mine')">Mine</button>
-                    <button class="toggle-btn" id="toggleOur" onclick="Polyculy.setCalMode('our')">Our</button>
-                </div>
-                <div class="btn-group btn-group-sm">
-                    <a href="/views/calendar/month.cfm" class="btn btn-polyculy-outline btn-sm">Month</a>
-                    <a href="/views/calendar/week.cfm" class="btn btn-polyculy-outline btn-sm">Week</a>
-                    <a href="/views/calendar/day.cfm" class="btn btn-polyculy btn-sm">Day</a>
-                </div>
-            </div>
+<cf_main pageTitle="My Calendar - Day View" showNav="true">
+<cfoutput>
+<div class="page-container calendar-page">
+    <div class="calendar-header">
+        <div class="calendar-header-left">
+            <h2 class="page-title">My Calendar</h2>
         </div>
-
-        <div id="dayGrid" style="position:relative; min-height:600px;">
-            <div id="dayTimeSlots"></div>
+        <div class="calendar-header-actions">
+            <button class="btn btn-primary-purple btn-sm" onclick="window.location.href='/views/calendar/month.cfm'">
+                <i class="fas fa-plus me-1"></i>Personal Event
+            </button>
+            <button class="btn btn-outline-purple btn-sm" onclick="window.location.href='/views/events/shared.cfm'">
+                <i class="fas fa-share me-1"></i>Shared Event Invitation
+            </button>
         </div>
     </div>
-</div>
 
-<div class="filter-bar" id="filterBar">
-    <span class="small text-muted me-2"><i class="fas fa-filter me-1"></i>Show:</span>
-    <div id="filterPills"></div>
+    <div class="calendar-controls">
+        <div class="view-toggle-group">
+            <button class="view-toggle-btn active" data-view="day" onclick="Polyculy.setView('day')">Day</button>
+            <button class="view-toggle-btn" data-view="week" onclick="Polyculy.setView('week')">Week</button>
+            <button class="view-toggle-btn" data-view="month" onclick="Polyculy.setView('month')">Month</button>
+        </div>
+        <div class="calendar-nav">
+            <button class="btn-nav" onclick="Polyculy.navigateCalendar(-1)"><i class="fas fa-chevron-left"></i></button>
+            <span class="calendar-nav-title" id="calendarTitle">Loading...</span>
+            <button class="btn-nav" onclick="Polyculy.navigateCalendar(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="view-toggle-group">
+            <button class="view-toggle-btn active" data-perspective="mine" onclick="Polyculy.setPerspective('mine')">Mine</button>
+            <button class="view-toggle-btn" data-perspective="our" onclick="Polyculy.setPerspective('our')">Our</button>
+        </div>
+    </div>
+
+    <div class="calendar-grid day-view" id="calendarGrid">
+        <div class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+    </div>
+
+    <div class="toggle-bar" id="toggleBar" style="display:none;"></div>
 </div>
 
 <script>
-$(function() {
-    Polyculy.initCalendar('day');
+$(document).ready(function() {
+    Polyculy.setView('day');
+    Polyculy.initCalendar();
 });
 </script>
-
+</cfoutput>
 </cf_main>

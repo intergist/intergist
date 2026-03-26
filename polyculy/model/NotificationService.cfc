@@ -1,26 +1,36 @@
 component {
 
-    function getForUser(required numeric userId, boolean unreadOnly = false) {
-        var sql = "SELECT notification_id, notification_type, title, message,
-                          related_entity_type, related_entity_id, is_read, created_at
-                   FROM notifications WHERE user_id = :uid";
-        var params = { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } };
-
-        if (arguments.unreadOnly) {
-            sql &= " AND is_read = FALSE";
-        }
-
-        sql &= " ORDER BY created_at DESC";
-        return queryExecute(sql, params, { datasource: "polyculy" });
+    function create(required numeric userId, required string notificationType, required string title, required string message, string entityType = "", numeric entityId = 0) {
+        queryExecute(
+            "INSERT INTO notifications (user_id, notification_type, title, message, related_entity_type, related_entity_id)
+             VALUES (:uid, :ntype, :title, :msg, :etype, :eid)",
+            {
+                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
+                ntype: { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" },
+                title: { value: arguments.title, cfsqltype: "cf_sql_varchar" },
+                msg: { value: arguments.message, cfsqltype: "cf_sql_varchar" },
+                etype: { value: arguments.entityType, cfsqltype: "cf_sql_varchar", null: !len(arguments.entityType) },
+                eid: { value: arguments.entityId, cfsqltype: "cf_sql_integer", null: arguments.entityId == 0 }
+            }
+        );
     }
 
     function getUnreadCount(required numeric userId) {
         var q = queryExecute(
             "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = :uid AND is_read = FALSE",
-            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } },
-            { datasource: "polyculy" }
+            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } }
         );
         return q.cnt;
+    }
+
+    function getRecent(required numeric userId, numeric limit = 20) {
+        return queryExecute(
+            "SELECT TOP(:lim) * FROM notifications WHERE user_id = :uid ORDER BY created_at DESC",
+            {
+                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
+                lim: { value: arguments.limit, cfsqltype: "cf_sql_integer" }
+            }
+        );
     }
 
     function markAsRead(required numeric notificationId, required numeric userId) {
@@ -29,77 +39,56 @@ component {
             {
                 nid: { value: arguments.notificationId, cfsqltype: "cf_sql_integer" },
                 uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" }
-            },
-            { datasource: "polyculy" }
+            }
         );
     }
 
     function markAllAsRead(required numeric userId) {
         queryExecute(
             "UPDATE notifications SET is_read = TRUE WHERE user_id = :uid AND is_read = FALSE",
-            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } },
-            { datasource: "polyculy" }
-        );
-    }
-
-    function create(required numeric userId, required string notificationType, required string title, required string message, string relatedEntityType = "", numeric relatedEntityId = 0) {
-        queryExecute(
-            "INSERT INTO notifications (user_id, notification_type, title, message, related_entity_type, related_entity_id)
-             VALUES (:uid, :ntype, :title, :msg, :etype, :eid)",
-            {
-                uid:   { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                ntype: { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" },
-                title: { value: arguments.title, cfsqltype: "cf_sql_varchar" },
-                msg:   { value: arguments.message, cfsqltype: "cf_sql_varchar" },
-                etype: { value: arguments.relatedEntityType, cfsqltype: "cf_sql_varchar", null: !len(arguments.relatedEntityType) },
-                eid:   { value: arguments.relatedEntityId, cfsqltype: "cf_sql_integer", null: arguments.relatedEntityId == 0 }
-            },
-            { datasource: "polyculy" }
+            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } }
         );
     }
 
     function getPreferences(required numeric userId) {
         return queryExecute(
-            "SELECT pref_id, notification_type, is_enabled, delivery_mode, quiet_hours_start, quiet_hours_end
-             FROM notification_preferences WHERE user_id = :uid ORDER BY notification_type",
-            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } },
-            { datasource: "polyculy" }
+            "SELECT * FROM notification_preferences WHERE user_id = :uid",
+            { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } }
         );
     }
 
-    function updatePreference(required numeric userId, required string notificationType, required boolean isEnabled, string deliveryMode = "instant") {
+    function savePreference(required numeric userId, required string notificationType, boolean isEnabled = true, string deliveryMode = "instant", string quietStart = "", string quietEnd = "") {
         var existing = queryExecute(
-            "SELECT pref_id FROM notification_preferences WHERE user_id = :uid AND notification_type = :ntype",
+            "SELECT pref_id FROM notification_preferences WHERE user_id = :uid AND notification_type = :nt",
             {
-                uid:   { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                ntype: { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" }
-            },
-            { datasource: "polyculy" }
+                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
+                nt: { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" }
+            }
         );
-
-        if (existing.recordCount) {
+        if (existing.recordCount > 0) {
             queryExecute(
-                "UPDATE notification_preferences SET is_enabled = :enabled, delivery_mode = :dmode
-                 WHERE user_id = :uid AND notification_type = :ntype",
+                "UPDATE notification_preferences SET is_enabled = :enabled, delivery_mode = :mode,
+                 quiet_hours_start = :qs, quiet_hours_end = :qe WHERE pref_id = :pid",
                 {
-                    uid:     { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                    ntype:   { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" },
+                    pid: { value: existing.pref_id, cfsqltype: "cf_sql_integer" },
                     enabled: { value: arguments.isEnabled, cfsqltype: "cf_sql_bit" },
-                    dmode:   { value: arguments.deliveryMode, cfsqltype: "cf_sql_varchar" }
-                },
-                { datasource: "polyculy" }
+                    mode: { value: arguments.deliveryMode, cfsqltype: "cf_sql_varchar" },
+                    qs: { value: arguments.quietStart, cfsqltype: "cf_sql_varchar", null: !len(arguments.quietStart) },
+                    qe: { value: arguments.quietEnd, cfsqltype: "cf_sql_varchar", null: !len(arguments.quietEnd) }
+                }
             );
         } else {
             queryExecute(
-                "INSERT INTO notification_preferences (user_id, notification_type, is_enabled, delivery_mode)
-                 VALUES (:uid, :ntype, :enabled, :dmode)",
+                "INSERT INTO notification_preferences (user_id, notification_type, is_enabled, delivery_mode, quiet_hours_start, quiet_hours_end)
+                 VALUES (:uid, :nt, :enabled, :mode, :qs, :qe)",
                 {
-                    uid:     { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                    ntype:   { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" },
+                    uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
+                    nt: { value: arguments.notificationType, cfsqltype: "cf_sql_varchar" },
                     enabled: { value: arguments.isEnabled, cfsqltype: "cf_sql_bit" },
-                    dmode:   { value: arguments.deliveryMode, cfsqltype: "cf_sql_varchar" }
-                },
-                { datasource: "polyculy" }
+                    mode: { value: arguments.deliveryMode, cfsqltype: "cf_sql_varchar" },
+                    qs: { value: arguments.quietStart, cfsqltype: "cf_sql_varchar", null: !len(arguments.quietStart) },
+                    qe: { value: arguments.quietEnd, cfsqltype: "cf_sql_varchar", null: !len(arguments.quietEnd) }
+                }
             );
         }
     }

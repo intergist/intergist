@@ -1,2 +1,7 @@
-# H2 embedded database files (generated at runtime)
-data/
+# H2 database files (generated at runtime)
+data/*.db
+data/*.lock.db
+
+# CommandBox artifacts
+.CommandBox/
+server.json.bak

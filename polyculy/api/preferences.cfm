@@ -3,47 +3,46 @@
     cfheader(name="Content-Type", value="application/json");
 
     userSvc = new model.UserService();
-
+    connSvc = new model.ConnectionService();
     action = url.action ?: "get";
     response = { "success": true };
 
     try {
         switch (action) {
             case "get":
-                q = userSvc.getById(session.userId);
-                if (q.recordCount) {
+                user = userSvc.getById(session.userId);
+                if (user.recordCount) {
                     response["data"] = {
-                        display_name: q.display_name,
-                        email: q.email,
-                        timezone_id: q.timezone_id,
-                        avatar_url: q.avatar_url
+                        "userId": user.user_id,
+                        "email": user.email,
+                        "displayName": user.display_name,
+                        "timezoneId": user.timezone_id,
+                        "calendarCreated": user.calendar_created
                     };
                 }
                 break;
 
-            case "update":
-                userSvc.updateProfile(session.userId, {
-                    display_name: form.display_name ?: session.displayName,
-                    timezone_id: form.timezone_id ?: "America/New_York"
-                });
-                session.displayName = form.display_name ?: session.displayName;
-                session.timezone = form.timezone_id ?: "America/New_York";
-                response["message"] = "Preferences updated";
+            case "saveTimezone":
+                if (!structKeyExists(form, "timezoneId")) {
+                    response = { "success": false, "message": "Timezone required." }; break;
+                }
+                userSvc.updateTimezone(session.userId, form.timezoneId);
+                session.timezoneId = form.timezoneId;
+                response["message"] = "Timezone updated.";
                 break;
 
-            case "changePassword":
-                // Verify current password
-                q = userSvc.authenticate(session.email, form.current_password);
-                if (q.recordCount) {
-                    userSvc.changePassword(session.userId, form.new_password);
-                    response["message"] = "Password changed";
-                } else {
-                    response = { "success": false, "message": "Current password is incorrect" };
+            case "saveDisplayPrefs":
+                if (structKeyExists(form, "targetUserId")) {
+                    connSvc.updateDisplayPrefs(
+                        session.userId, form.targetUserId,
+                        form.nickname ?: "", form.avatarOverride ?: "", form.calendarColor ?: ""
+                    );
+                    response["message"] = "Display preferences saved.";
                 }
                 break;
 
             default:
-                response = { "success": false, "message": "Unknown action" };
+                response = { "success": false, "message": "Unknown action: #action#" };
         }
     } catch (any e) {
         response = { "success": false, "message": e.message };

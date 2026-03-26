@@ -1,972 +1,731 @@
-/**
- * Polyculy — Privacy-first, relationship-aware scheduling
- * Main client-side application logic
- */
-var Polyculy = (function($) {
-    'use strict';
+/* ============================================================
+   Polyculy — Client-Side JavaScript
+   ============================================================ */
 
-    // ── State ──
-    var calState = {
-        currentDate: new Date(),
-        viewType: 'month',
-        mode: 'mine',           // 'mine' or 'our'
-        enabledUserIds: [],
-        memberColors: {}
-    };
+var Polyculy = (function() {
 
-    var memberPool = [
-        '#22C55E', '#3B82F6', '#F59E0B', '#A855F7',
-        '#EC4899', '#14B8A6', '#F97316', '#6366F1'
-    ];
+    // Lowercase all keys recursively (Lucee returns uppercase column names)
+    function normalizeKeys(obj) {
+        if (Array.isArray(obj)) return obj.map(normalizeKeys);
+        if (obj && typeof obj === 'object') {
+            var out = {};
+            Object.keys(obj).forEach(function(k) { out[k.toLowerCase()] = normalizeKeys(obj[k]); });
+            return out;
+        }
+        return obj;
+    }
 
-    // ── Helpers ──
-    function lk(obj) {
-        if (!obj) return obj;
-        var out = {};
-        for (var k in obj) {
-            if (obj.hasOwnProperty(k)) {
-                out[k.toLowerCase()] = obj[k];
+    function apiGet(url) {
+        return $.ajax({ url: url, method: 'GET', dataType: 'json' })
+            .then(function(resp) { return normalizeKeys(resp); });
+    }
+
+    function apiPost(url, data) {
+        return $.ajax({ url: url, method: 'POST', data: data, dataType: 'json' })
+            .then(function(resp) { return normalizeKeys(resp); });
+    }
+
+    function showAlert(message, type) {
+        type = type || 'info';
+        var alertHtml = '<div class="alert-inline ' + type + '" style="position:fixed;top:70px;right:20px;z-index:9999;min-width:300px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">' +
+            '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + ' me-2"></i>' +
+            message + '</div>';
+        var $alert = $(alertHtml).appendTo('body');
+        setTimeout(function() { $alert.fadeOut(300, function() { $(this).remove(); }); }, 3500);
+    }
+
+    // ---- Notifications ----
+    function loadNotificationCount() {
+        apiGet('/api/notifications.cfm?action=unreadCount').done(function(resp) {
+            if (resp.success) {
+                var count = resp.count || 0;
+                var $badge = $('#notifBadge');
+                if (count > 0) {
+                    $badge.text(count).show();
+                } else {
+                    $badge.hide();
+                }
             }
+        });
+    }
+
+    function toggleNotifications() {
+        var $panel = $('#notificationPanel');
+        var $overlay = $('#notifOverlay');
+        if ($panel.is(':visible')) {
+            $panel.hide();
+            $overlay.hide();
+        } else {
+            $panel.show();
+            $overlay.show();
+            loadNotifications();
         }
-        return out;
     }
 
-    function toast(msg, type) {
-        var $t = $('#appToast');
-        $t.removeClass('bg-success bg-danger bg-warning bg-info').addClass('bg-' + (type || 'success'));
-        $('#toastMessage').text(msg);
-        var t = new bootstrap.Toast($t[0], { delay: 3000 });
-        t.show();
-    }
-
-    function formatDate(d) {
-        var m = d.getMonth() + 1;
-        var day = d.getDate();
-        return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
-    }
-
-    function formatDateTime(d) {
-        return formatDate(d) + 'T' + (d.getHours() < 10 ? '0' + d.getHours() : d.getHours()) +
-            ':' + (d.getMinutes() < 10 ? '0' + d.getMinutes() : d.getMinutes());
-    }
-
-    function parseDate(str) {
-        if (!str) return new Date();
-        // Handle various date formats from server
-        if (typeof str === 'object' && str.getTime) return str;
-        var d = new Date(str);
-        if (isNaN(d.getTime())) {
-            // Try parsing "March 25, 2026 14:00:00" style
-            d = new Date(str.replace(/\{ts '(.*)'\}/, '$1'));
-        }
-        return isNaN(d.getTime()) ? new Date() : d;
-    }
-
-    var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-    // ── Notifications ──
     function loadNotifications() {
-        $.getJSON('/api/notifications.cfm?action=list', function(r) {
-            var data = r.DATA || r.data || [];
-            var count = r.UNREAD_COUNT || r.unread_count || 0;
-            if (count > 0) {
-                $('#notifCount').text(count).show();
-            } else {
-                $('#notifCount').hide();
-            }
-
+        apiGet('/api/notifications.cfm?action=list&limit=15').done(function(resp) {
+            if (!resp.success) return;
             var html = '';
-            if (data.length === 0) {
-                html = '<div class="text-center text-muted py-3"><small>No notifications</small></div>';
+            var notifications = resp.data || [];
+            if (notifications.length === 0) {
+                html = '<div class="text-center text-muted py-3">No notifications</div>';
             } else {
-                data.slice(0, 20).forEach(function(n) {
-                    n = lk(n);
-                    var unread = !n.is_read;
-                    html += '<a href="#" class="dropdown-item py-2' + (unread ? ' bg-purple-light' : '') + '" onclick="Polyculy.readNotif(' + n.notification_id + '); return false;">';
-                    html += '<div class="fw-semibold small">' + (n.title || '') + '</div>';
-                    html += '<div class="text-muted" style="font-size:0.75rem;">' + (n.message || '') + '</div>';
-                    html += '</a>';
+                notifications.forEach(function(n) {
+                    var iconClass = 'fas fa-bell';
+                    if (n.notification_type && n.notification_type.indexOf('connection') !== -1) iconClass = 'fas fa-users';
+                    if (n.notification_type && n.notification_type.indexOf('event') !== -1) iconClass = 'fas fa-calendar';
+                    if (n.notification_type && n.notification_type.indexOf('proposal') !== -1) iconClass = 'fas fa-clock';
+
+                    html += '<div class="notif-item ' + (!n.is_read ? 'unread' : '') + '" onclick="Polyculy.markNotificationRead(' + n.notification_id + ')">' +
+                        '<div class="notif-icon"><i class="' + iconClass + '"></i></div>' +
+                        '<div><div class="notif-text">' + (n.title || '') + '</div>' +
+                        '<div class="notif-time">' + formatTimeAgo(n.created_at) + '</div></div></div>';
                 });
             }
             $('#notifList').html(html);
         });
     }
 
-    function readNotif(nid) {
-        $.post('/api/notifications.cfm?action=markRead', { notification_id: nid }, function() {
+    function markNotificationRead(notifId) {
+        apiPost('/api/notifications.cfm?action=markRead', { notificationId: notifId }).done(function() {
+            loadNotificationCount();
             loadNotifications();
         });
     }
 
-    function markAllNotifRead() {
-        $.post('/api/notifications.cfm?action=markAllRead', {}, function() {
+    function markAllNotificationsRead() {
+        apiPost('/api/notifications.cfm?action=markAllRead', {}).done(function() {
+            loadNotificationCount();
             loadNotifications();
-            toast('All notifications marked as read');
         });
     }
 
-    // ── Auth ──
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return '';
+        try {
+            var date = new Date(dateStr.replace(/\{ts\s+'(.+)'\}/, '$1'));
+            var now = new Date();
+            var diff = Math.floor((now - date) / 60000);
+            if (diff < 1) return 'just now';
+            if (diff < 60) return diff + 'm ago';
+            if (diff < 1440) return Math.floor(diff / 60) + 'h ago';
+            return Math.floor(diff / 1440) + 'd ago';
+        } catch (e) { return ''; }
+    }
+
+    // ---- Auth ----
+    function login(email, password) {
+        return apiPost('/api/auth.cfm?action=login', { email: email, password: password });
+    }
+
     function logout() {
-        $.post('/api/auth.cfm?action=logout', {}, function() {
+        apiPost('/api/auth.cfm?action=logout', {}).done(function() {
             window.location.href = '/index.cfm';
         });
     }
 
-    // ── Connections ──
-    function loadConnections() {
-        $.getJSON('/api/connections.cfm?action=list', function(r) {
-            var data = r.DATA || r.data || [];
-            var html = '';
-            if (data.length === 0) {
-                html = '<div class="text-muted text-center py-3"><i class="fas fa-heart"></i><p class="mt-1 small">No connections yet</p></div>';
+    function signup(email, licenceCode) {
+        return apiPost('/api/auth.cfm?action=signup', { email: email, licenceCode: licenceCode });
+    }
+
+    function completeSignup(email, password, licenceCode, displayName) {
+        return apiPost('/api/auth.cfm?action=completeSignup', {
+            email: email, password: password, licenceCode: licenceCode, displayName: displayName
+        });
+    }
+
+    // ---- Connections ----
+    function loadPolycule() {
+        return apiGet('/api/connections.cfm?action=list');
+    }
+
+    function loadConnectedMembers() {
+        return apiGet('/api/connections.cfm?action=connected');
+    }
+
+    function sendConnectionRequest(email, displayName) {
+        return apiPost('/api/connections.cfm?action=send', { email: email, displayName: displayName });
+    }
+
+    function confirmConnection(connectionId) {
+        return apiPost('/api/connections.cfm?action=confirm', { connectionId: connectionId });
+    }
+
+    function revokeConnection(connectionId) {
+        return apiPost('/api/connections.cfm?action=revoke', { connectionId: connectionId });
+    }
+
+    function giftLicence(email) {
+        return apiPost('/api/connections.cfm?action=giftLicence', { email: email });
+    }
+
+    // ---- Calendar ----
+    function loadCalendarEvents(startDate, endDate) {
+        var params = 'action=events';
+        if (startDate) params += '&startDate=' + startDate;
+        if (endDate) params += '&endDate=' + endDate;
+        return apiGet('/api/calendar.cfm?' + params);
+    }
+
+    function loadOverlayEvents(startDate, endDate) {
+        var params = 'action=overlay';
+        if (startDate) params += '&startDate=' + startDate;
+        if (endDate) params += '&endDate=' + endDate;
+        return apiGet('/api/calendar.cfm?' + params);
+    }
+
+    function setupCalendar(method) {
+        return apiPost('/api/calendar.cfm?action=setup', { method: method });
+    }
+
+    // ---- Events ----
+    function createPersonalEvent(formData) {
+        return apiPost('/api/events.cfm?action=create', formData);
+    }
+
+    function createSharedEvent(formData) {
+        return apiPost('/api/shared-events.cfm?action=create', formData);
+    }
+
+    function respondToInvitation(eventId, response) {
+        return apiPost('/api/shared-events.cfm?action=respond', { eventId: eventId, response: response });
+    }
+
+    function getSharedEvent(eventId) {
+        return apiGet('/api/shared-events.cfm?action=get&id=' + eventId);
+    }
+
+    // ---- Sharing Mutual Exclusivity ----
+    function initSharingControls() {
+        var $invisible = $('#visInvisible');
+        var $fullDetails = $('#visFullDetails');
+        var $busyBlock = $('#visBusyBlock');
+        var $fullAudience = $('[name="fullDetailAudience"]');
+        var $busyAudience = $('[name="busyBlockAudience"]');
+
+        $invisible.on('change', function() {
+            if (this.checked) {
+                $fullDetails.prop('checked', false).prop('disabled', true);
+                $busyBlock.prop('checked', false).prop('disabled', true);
+                $('.full-detail-options, .busy-block-options').addClass('disabled-section');
+            }
+        });
+
+        $fullDetails.on('change', function() {
+            if (this.checked) {
+                $invisible.prop('checked', false);
+                $busyBlock.prop('disabled', false);
+                $('.full-detail-options').removeClass('disabled-section');
             } else {
-                data.forEach(function(c) {
-                    c = lk(c);
-                    var name = c.nickname || c.other_display_name || c.invited_display_name || c.invited_email || 'Unknown';
-                    var status = c.status || 'unknown';
-                    var color = c.calendar_color || '#7C3AED';
-                    var initial = name.charAt(0).toUpperCase();
-
-                    html += '<div class="polycule-member" data-connection-id="' + c.connection_id + '">';
-                    html += '<div class="member-avatar" style="background:' + color + ';">' + initial + '</div>';
-                    html += '<div class="member-name">' + name + '</div>';
-                    html += '<span class="status-badge status-' + status + '"><span class="status-dot"></span>' + status.replace(/_/g, ' ') + '</span>';
-                    html += '</div>';
-
-                    // Context menu actions
-                    if (status === 'awaiting_confirmation' && c.initiated_by !== c.user_id_1) {
-                        // Could be a pending request from them
-                    }
-                    if (status === 'connected') {
-                        html += '<div class="ps-5 mb-2">';
-                        html += '<a href="/views/connections/revoke-review.cfm?connection_id=' + c.connection_id + '" class="btn btn-sm btn-outline-danger"><i class="fas fa-heart-broken me-1"></i>Revoke</a>';
-                        html += '</div>';
-                    }
-                });
+                $('.full-detail-options').addClass('disabled-section');
             }
-            $('#connectionsList').html(html);
+            updateBusyBlockAvailability();
         });
-    }
 
-    function loadPendingRequests() {
-        $.getJSON('/api/connections.cfm?action=pending', function(r) {
-            var data = r.DATA || r.data || [];
-            if (data.length === 0) {
-                $('#pendingSection').hide();
-                return;
-            }
-            $('#pendingSection').show();
-            var html = '';
-            data.forEach(function(c) {
-                c = lk(c);
-                html += '<div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-purple-light rounded">';
-                html += '<div><strong>' + (c.from_display_name || c.from_email) + '</strong> wants to connect</div>';
-                html += '<div>';
-                html += '<button class="btn btn-sm btn-success me-1" onclick="Polyculy.acceptConnection(' + c.connection_id + ')"><i class="fas fa-check"></i></button>';
-                html += '</div>';
-                html += '</div>';
-            });
-            $('#pendingList').html(html);
-        });
-    }
-
-    function sendInvite() {
-        $('#inviteError').addClass('d-none');
-        $.ajax({
-            url: '/api/connections.cfm?action=invite',
-            method: 'POST',
-            data: { email: $('#inviteEmail').val(), display_name: $('#inviteDisplayName').val() },
-            dataType: 'json',
-            success: function(r) {
-                if (r.SUCCESS || r.success) {
-                    var data = r.DATA || r.data || {};
-                    var status = data.STATUS || data.status || 'awaiting_signup';
-                    window.location.href = '/views/connections/results.cfm?status=' + status + '&email=' + encodeURIComponent($('#inviteEmail').val());
-                } else {
-                    $('#inviteError').removeClass('d-none').text(r.MESSAGE || r.message);
-                }
-            }
-        });
-        return false;
-    }
-
-    function acceptConnection(connId) {
-        $.post('/api/connections.cfm?action=accept', { connection_id: connId }, function(r) {
-            toast('Connection accepted!');
-            loadConnections();
-            loadPendingRequests();
-        }, 'json');
-    }
-
-    function loadAvailableLicences() {
-        $.getJSON('/api/licences.cfm?action=available', function(r) {
-            var data = r.DATA || r.data || [];
-            var $sel = $('#giftLicenceCode');
-            data.forEach(function(lic) {
-                lic = lk(lic);
-                $sel.append('<option value="' + lic.licence_code + '">' + lic.licence_code + ' (' + lic.licence_type + ')</option>');
-            });
-        });
-    }
-
-    function giftLicence() {
-        var code = $('#giftLicenceCode').val();
-        var email = $('#giftEmail').val();
-        if (!code || !email) { toast('Please fill all fields', 'warning'); return false; }
-        $.post('/api/licences.cfm?action=gift', { licence_code: code, to_email: email }, function(r) {
-            if (r.SUCCESS || r.success) {
-                toast('Licence gifted!');
-                $('#giftEmail').val('');
+        $busyBlock.on('change', function() {
+            if (this.checked) {
+                $invisible.prop('checked', false);
+                $('.busy-block-options').removeClass('disabled-section');
             } else {
-                toast(r.MESSAGE || r.message, 'danger');
+                $('.busy-block-options').addClass('disabled-section');
             }
-        }, 'json');
-        return false;
-    }
-
-    function confirmRevocation() {
-        var connId = new URLSearchParams(window.location.search).get('connection_id');
-        var decisions = [];
-        $('[data-event-id]').each(function() {
-            decisions.push({ event_id: $(this).data('event-id'), action: $(this).val() });
         });
-        $.ajax({
-            url: '/api/connections.cfm?action=revoke',
-            method: 'POST',
-            data: { connection_id: connId },
-            dataType: 'json',
-            success: function(r) {
-                toast('Connection revoked');
-                setTimeout(function() { window.location.href = '/views/connections/connect.cfm'; }, 1000);
+
+        $fullAudience.on('change', function() {
+            updateBusyBlockAvailability();
+        });
+
+        // Person checkboxes - enforce mutual exclusivity
+        $('.full-detail-person').on('change', function() {
+            var userId = $(this).val();
+            var $busyCheckbox = $('.busy-block-person[value="' + userId + '"]');
+            if (this.checked) {
+                $busyCheckbox.prop('checked', false).prop('disabled', true);
+            } else {
+                $busyCheckbox.prop('disabled', false);
             }
         });
     }
 
-    // ── Calendar ──
-    function initCalendar(viewType) {
-        calState.viewType = viewType;
-        calState.currentDate = new Date();
-        loadMembers();
+    function updateBusyBlockAvailability() {
+        var fullAudience = $('[name="fullDetailAudience"]:checked').val();
+        if (fullAudience === 'entire') {
+            $('#visBusyBlock').prop('checked', false).prop('disabled', true);
+            $('.busy-block-options').addClass('disabled-section');
+        } else {
+            $('#visBusyBlock').prop('disabled', false);
+            // Grey out people selected in full details
+            var $busyEntire = $('[name="busyBlockAudience"][value="entire"]');
+            if ($('#visFullDetails').is(':checked') && fullAudience === 'specific') {
+                $busyEntire.prop('disabled', true);
+            } else {
+                $busyEntire.prop('disabled', false);
+            }
+        }
+    }
+
+    // ---- Calendar Rendering ----
+    var currentDate = new Date();
+    var currentView = 'month';
+    var currentPerspective = 'mine';
+    var calendarToggleStates = {};
+
+    function initCalendar() {
         renderCalendar();
-        loadNotifications();
-        setInterval(loadNotifications, 30000);
-    }
+        loadNotificationCount();
 
-    function loadMembers() {
-        $.getJSON('/api/calendar.cfm?action=getMembers', function(r) {
-            var data = r.DATA || r.data || [];
-            calState.enabledUserIds = [];
-            var pillsHtml = '';
-            data.forEach(function(m, i) {
-                m = lk(m);
-                var color = m.calendar_color || memberPool[i % memberPool.length];
-                calState.memberColors[m.user_id] = color;
-                calState.enabledUserIds.push(m.user_id);
-
-                pillsHtml += '<div class="filter-pill active" data-user-id="' + m.user_id + '" onclick="Polyculy.toggleMember(this)" style="border-color:' + color + ';">';
-                pillsHtml += '<span class="pill-dot" style="background:' + color + ';"></span>';
-                pillsHtml += m.display_name;
-                pillsHtml += '</div>';
-            });
-            $('#filterPills').html(pillsHtml);
-
-            // Sidebar members
-            var sideHtml = '';
-            data.forEach(function(m) {
-                m = lk(m);
-                var color = calState.memberColors[m.user_id] || '#7C3AED';
-                sideHtml += '<div class="polycule-member">';
-                sideHtml += '<div class="member-avatar" style="background:' + color + ';">' + m.display_name.charAt(0).toUpperCase() + '</div>';
-                sideHtml += '<div class="member-name">' + m.display_name + '</div>';
-                sideHtml += '</div>';
-            });
-            $('#calMembersList').html(sideHtml || '<p class="text-muted small">No connections yet</p>');
+        // Load toggle states
+        apiGet('/api/calendar.cfm?action=toggleState').done(function(resp) {
+            if (resp.data) calendarToggleStates = resp.data;
         });
     }
 
     function renderCalendar() {
-        var d = calState.currentDate;
-        if (calState.viewType === 'month') {
-            renderMonthView(d);
-        } else if (calState.viewType === 'week') {
-            renderWeekView(d);
-        } else {
-            renderDayView(d);
-        }
-        loadCalendarData();
+        if (currentView === 'month') renderMonthView();
+        else if (currentView === 'week') renderWeekView();
+        else renderDayView();
     }
 
-    function renderMonthView(d) {
-        var year = d.getFullYear();
-        var month = d.getMonth();
-        $('#calTitle').text(monthNames[month] + ' ' + year);
-
+    function renderMonthView() {
+        var year = currentDate.getFullYear();
+        var month = currentDate.getMonth();
         var firstDay = new Date(year, month, 1);
         var lastDay = new Date(year, month + 1, 0);
-        var startDay = firstDay.getDay();
-        var totalDays = lastDay.getDate();
+        var startDayOfWeek = firstDay.getDay();
+        var daysInMonth = lastDay.getDate();
         var today = new Date();
 
-        // Clear existing day cells (keep headers)
-        $('#monthGrid .day-cell').remove();
+        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var titleText = monthNames[month] + ' ' + year;
+        $('#calendarTitle').text(titleText);
+        $('#calendarNavTitle').text(titleText);
 
-        // Previous month fill
-        var prevLastDay = new Date(year, month, 0).getDate();
-        for (var i = startDay - 1; i >= 0; i--) {
-            var dayNum = prevLastDay - i;
-            $('#monthGrid').append('<div class="day-cell other-month" data-date="' + formatDate(new Date(year, month - 1, dayNum)) + '"><span class="day-number">' + dayNum + '</span></div>');
-        }
+        var startDate = new Date(year, month, 1 - startDayOfWeek);
+        var endDate = new Date(year, month + 1, 6);
 
-        // Current month
-        for (var day = 1; day <= totalDays; day++) {
-            var cellDate = new Date(year, month, day);
-            var isToday = (cellDate.toDateString() === today.toDateString());
-            var cls = 'day-cell' + (isToday ? ' today' : '');
-            var dateStr = formatDate(cellDate);
-            $('#monthGrid').append('<div class="' + cls + '" data-date="' + dateStr + '" onclick="Polyculy.onDayClick(\'' + dateStr + '\')"><span class="day-number">' + day + '</span><div class="day-events"></div></div>');
-        }
+        var startStr = formatDateISO(startDate);
+        var endStr = formatDateISO(endDate);
 
-        // Next month fill
-        var remaining = 42 - (startDay + totalDays);
-        for (var j = 1; j <= remaining; j++) {
-            $('#monthGrid').append('<div class="day-cell other-month" data-date="' + formatDate(new Date(year, month + 1, j)) + '"><span class="day-number">' + j + '</span></div>');
-        }
+        // Load events
+        var eventPromise = loadCalendarEvents(startStr, endStr);
+        var overlayPromise = (currentPerspective === 'our') ? loadOverlayEvents(startStr, endStr) : $.Deferred().resolve({ success: true, data: [] });
+
+        $.when(eventPromise, overlayPromise).done(function(evResp, ovResp) {
+            var events = (evResp.data || []);
+            var overlayEvents = (ovResp && ovResp.data) ? ovResp.data : [];
+
+            var html = '<table><thead><tr>';
+            var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            dayNames.forEach(function(d) { html += '<th>' + d + '</th>'; });
+            html += '</tr></thead><tbody>';
+
+            var currentCellDate = new Date(startDate);
+            for (var week = 0; week < 6; week++) {
+                html += '<tr>';
+                for (var day = 0; day < 7; day++) {
+                    var isOtherMonth = currentCellDate.getMonth() !== month;
+                    var isToday = currentCellDate.toDateString() === today.toDateString();
+                    var cellClass = '';
+                    if (isOtherMonth) cellClass += ' other-month';
+                    if (isToday) cellClass += ' today';
+
+                    html += '<td class="' + cellClass + '">';
+                    html += '<div class="day-number' + (isToday ? ' today' : '') + '">' + currentCellDate.getDate() + '</div>';
+
+                    // Render events for this day
+                    var cellDateStr = formatDateISO(currentCellDate);
+                    var dayEvents = events.filter(function(e) {
+                        return e.start && e.start.substring(0, 10) === cellDateStr;
+                    });
+                    var dayOverlay = overlayEvents.filter(function(e) {
+                        return e.start && e.start.substring(0, 10) === cellDateStr;
+                    });
+
+                    dayEvents.forEach(function(ev) {
+                        var evClass = 'cal-event ';
+                        if (ev.type === 'personal') evClass += 'personal';
+                        else if (ev.state === 'active') evClass += 'shared-active';
+                        else evClass += 'shared-tentative';
+
+                        var timeStr = formatTime(ev.start);
+                        var endTimeStr = ev.end ? ' - ' + formatTime(ev.end) : '';
+
+                        html += '<div class="' + evClass + '" onclick="Polyculy.showEventDetail(\'' + ev.type + '\',' + ev.id + ')" title="' + escapeHtml(ev.title) + '">';
+                        html += '<span>' + escapeHtml(ev.title) + '</span>';
+                        html += '</div>';
+                    });
+
+                    if (currentPerspective === 'our') {
+                        dayOverlay.forEach(function(ev) {
+                            html += '<div class="cal-event overlay" style="background:' + (ev.calendarcolor || '#7C3AED') + ';" title="' + escapeHtml(ev.title || 'Busy') + '">';
+                            html += '<span>' + escapeHtml(ev.title || 'Busy') + '</span>';
+                            html += '</div>';
+                        });
+                    }
+
+                    html += '</td>';
+                    currentCellDate.setDate(currentCellDate.getDate() + 1);
+                }
+                html += '</tr>';
+                if (currentCellDate.getMonth() !== month && currentCellDate.getDate() > 7) break;
+            }
+
+            html += '</tbody></table>';
+            $('#calendarGrid').html(html);
+        });
     }
 
-    function renderWeekView(d) {
-        var startOfWeek = new Date(d);
-        startOfWeek.setDate(d.getDate() - d.getDay());
+    function renderWeekView() {
+        var startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
         var endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-        $('#calTitle').text('Week of ' + monthNames[startOfWeek.getMonth()] + ' ' + startOfWeek.getDate() + ', ' + startOfWeek.getFullYear());
+        var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var weekTitle = 'Week of ' + monthNames[startOfWeek.getMonth()] + ' ' + startOfWeek.getDate() + ', ' + startOfWeek.getFullYear();
+        $('#calendarTitle').text(weekTitle);
+        $('#calendarNavTitle').text(weekTitle);
 
-        var headerHtml = '<div style="width:60px; flex-shrink:0;"></div>';
-        for (var i = 0; i < 7; i++) {
-            var dd = new Date(startOfWeek);
-            dd.setDate(startOfWeek.getDate() + i);
-            var isToday = dd.toDateString() === new Date().toDateString();
-            headerHtml += '<div class="flex-fill text-center py-2 border-start" style="' + (isToday ? 'background:rgba(124,58,237,0.05);' : '') + '">';
-            headerHtml += '<div class="small text-muted">' + dayNames[dd.getDay()] + '</div>';
-            headerHtml += '<div class="fw-bold' + (isToday ? ' text-purple' : '') + '">' + dd.getDate() + '</div>';
-            headerHtml += '</div>';
-        }
-        $('#weekDayHeaders').html(headerHtml);
+        var startStr = formatDateISO(startOfWeek);
+        var endStr = formatDateISO(endOfWeek);
 
-        // Time slots
-        var slotsHtml = '';
-        for (var h = 0; h < 24; h++) {
-            var label = h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
-            slotsHtml += '<div class="d-flex" style="height:60px; border-bottom:1px solid #F3F4F6;">';
-            slotsHtml += '<div class="time-label" style="width:60px; flex-shrink:0;">' + label + '</div>';
-            for (var j = 0; j < 7; j++) {
-                slotsHtml += '<div class="flex-fill border-start position-relative" data-hour="' + h + '" data-day="' + j + '"></div>';
+        var eventPromise = loadCalendarEvents(startStr, endStr);
+        var overlayPromise = (currentPerspective === 'our') ? loadOverlayEvents(startStr, endStr) : $.Deferred().resolve({ success: true, data: [] });
+
+        $.when(eventPromise, overlayPromise).done(function(evResp, ovResp) {
+            var events = evResp.data || [];
+            var overlayEvents = (ovResp && ovResp.data) ? ovResp.data : [];
+            var today = new Date();
+            var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+            var html = '<table><thead><tr><th style="width:60px;">Time</th>';
+            for (var d = 0; d < 7; d++) {
+                var dayDate = new Date(startOfWeek);
+                dayDate.setDate(startOfWeek.getDate() + d);
+                var isToday = dayDate.toDateString() === today.toDateString();
+                html += '<th' + (isToday ? ' class="today"' : '') + '>' + dayNames[d] + ' ' + dayDate.getDate() + '</th>';
             }
-            slotsHtml += '</div>';
-        }
-        $('#weekTimeSlots').html(slotsHtml);
-    }
+            html += '</tr></thead><tbody>';
 
-    function renderDayView(d) {
-        var dayStr = dayNames[d.getDay()] + ', ' + monthNames[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-        $('#calTitle').text(dayStr);
+            for (var hour = 7; hour <= 22; hour++) {
+                html += '<tr>';
+                var ampm = hour >= 12 ? 'PM' : 'AM';
+                var displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+                html += '<td><span class="time-label">' + displayHour + ' ' + ampm + '</span></td>';
 
-        var slotsHtml = '';
-        for (var h = 0; h < 24; h++) {
-            var label = h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM';
-            slotsHtml += '<div class="d-flex" style="height:60px; border-bottom:1px solid #F3F4F6;">';
-            slotsHtml += '<div class="time-label" style="width:70px; flex-shrink:0;">' + label + '</div>';
-            slotsHtml += '<div class="flex-fill position-relative" data-hour="' + h + '"></div>';
-            slotsHtml += '</div>';
-        }
-        $('#dayTimeSlots').html(slotsHtml);
-    }
+                for (var d = 0; d < 7; d++) {
+                    var dayDate = new Date(startOfWeek);
+                    dayDate.setDate(startOfWeek.getDate() + d);
+                    var cellDateStr = formatDateISO(dayDate);
 
-    function loadCalendarData() {
-        var d = calState.currentDate;
-        var startDate, endDate;
+                    html += '<td style="position:relative;">';
 
-        if (calState.viewType === 'month') {
-            startDate = formatDate(new Date(d.getFullYear(), d.getMonth(), 1));
-            endDate = formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
-        } else if (calState.viewType === 'week') {
-            var ws = new Date(d);
-            ws.setDate(d.getDate() - d.getDay());
-            var we = new Date(ws);
-            we.setDate(ws.getDate() + 6);
-            startDate = formatDate(ws);
-            endDate = formatDate(we);
-        } else {
-            startDate = formatDate(d);
-            endDate = formatDate(d);
-        }
+                    // Find events at this hour
+                    var hourEvents = events.filter(function(e) {
+                        if (!e.start || e.start.substring(0, 10) !== cellDateStr) return false;
+                        var eHour = parseInt(e.start.substring(11, 13));
+                        return eHour === hour;
+                    });
 
-        var url = '/api/calendar.cfm?action=getData&view_type=' + calState.viewType +
-            '&start_date=' + startDate + '&end_date=' + endDate +
-            '&mode=' + calState.mode +
-            '&enabled_user_ids=' + calState.enabledUserIds.join(',');
+                    hourEvents.forEach(function(ev) {
+                        var evClass = ev.type === 'personal' ? 'personal' : (ev.state === 'active' ? 'shared-active' : 'shared-tentative');
+                        var startTime = formatTime(ev.start);
+                        var endTime = ev.end ? formatTime(ev.end) : '';
+                        html += '<div class="cal-event ' + evClass + '" onclick="Polyculy.showEventDetail(\'' + ev.type + '\',' + ev.id + ')">';
+                        html += startTime + (endTime ? ' - ' + endTime : '');
+                        html += '</div>';
+                    });
 
-        $.getJSON(url, function(r) {
-            var data = r.DATA || r.data || {};
-            var personal = data.PERSONALEVENTS || data.personalEvents || [];
-            var shared = data.SHAREDEVENTS || data.sharedEvents || [];
-            var others = data.OTHERSEVENTS || data.othersEvents || [];
+                    // Overlay events
+                    if (currentPerspective === 'our') {
+                        var hourOverlay = overlayEvents.filter(function(e) {
+                            if (!e.start || e.start.substring(0, 10) !== cellDateStr) return false;
+                            var eHour = parseInt(e.start.substring(11, 13));
+                            return eHour === hour;
+                        });
+                        hourOverlay.forEach(function(ev) {
+                            html += '<div class="cal-event overlay" style="background:' + (ev.calendarcolor || '#7C3AED') + ';">';
+                            html += formatTime(ev.start) + (ev.end ? ' - ' + formatTime(ev.end) : '');
+                            html += '</div>';
+                        });
+                    }
 
-            if (calState.viewType === 'month') {
-                renderMonthEvents(personal, shared, others);
-            }
+                    // Current time line
+                    var isToday = dayDate.toDateString() === today.toDateString();
+                    if (isToday && today.getHours() === hour) {
+                        var minuteOffset = (today.getMinutes() / 60) * 100;
+                        html += '<div class="current-time-line" style="top:' + minuteOffset + '%;"></div>';
+                    }
 
-            // Render upcoming sidebar
-            renderUpcoming(personal, shared);
-        });
-    }
-
-    function renderMonthEvents(personal, shared, others) {
-        // Clear existing events
-        $('.day-events').empty();
-
-        var allEvents = [];
-        personal.forEach(function(e) {
-            e = lk(e);
-            allEvents.push({ title: e.title, date: parseDate(e.start_time), color: '#7C3AED', type: 'personal', id: e.event_id });
-        });
-        shared.forEach(function(e) {
-            e = lk(e);
-            var color = e.global_state === 'tentative' ? '#F59E0B' : '#22C55E';
-            allEvents.push({ title: e.title, date: parseDate(e.start_time), color: color, type: 'shared', id: e.event_id });
-        });
-        others.forEach(function(e) {
-            e = lk(e);
-            var color = e.calendar_color || calState.memberColors[e.owner_user_id] || '#A855F7';
-            var title = e.visibility_type === 'busy_block' ? 'Busy' : e.title;
-            allEvents.push({ title: title, date: parseDate(e.start_time), color: color, type: 'other', id: e.event_id, owner: e.owner });
-        });
-
-        allEvents.forEach(function(ev) {
-            var dateStr = formatDate(ev.date);
-            var $cell = $('.day-cell[data-date="' + dateStr + '"] .day-events');
-            if ($cell.length) {
-                var $existing = $cell.children();
-                if ($existing.length < 3) {
-                    var onclick = ev.type === 'shared' ? "Polyculy.viewSharedEvent(" + ev.id + ")" : "Polyculy.viewPersonalEvent(" + ev.id + ")";
-                    $cell.append('<div class="event-mini" style="background:' + ev.color + ';" onclick="' + onclick + '">' + ev.title + '</div>');
-                } else if ($existing.length === 3) {
-                    $cell.append('<div class="text-muted" style="font-size:0.65rem;">+more</div>');
+                    html += '</td>';
                 }
+                html += '</tr>';
             }
+
+            html += '</tbody></table>';
+            $('#calendarGrid').html(html);
         });
     }
 
-    function renderUpcoming(personal, shared) {
-        var all = [];
-        personal.forEach(function(e) {
-            e = lk(e);
-            all.push({ title: e.title, date: parseDate(e.start_time), type: 'personal', id: e.event_id });
-        });
-        shared.forEach(function(e) {
-            e = lk(e);
-            all.push({ title: e.title, date: parseDate(e.start_time), type: 'shared', id: e.event_id, state: e.global_state });
-        });
-        all.sort(function(a, b) { return a.date - b.date; });
+    function renderDayView() {
+        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        var dayTitle = dayNames[currentDate.getDay()] + ', ' + monthNames[currentDate.getMonth()] + ' ' + currentDate.getDate() + ', ' + currentDate.getFullYear();
+        $('#calendarTitle').text(dayTitle);
+        $('#calendarNavTitle').text(dayTitle);
 
-        var html = '';
-        all.slice(0, 5).forEach(function(ev) {
-            var icon = ev.type === 'shared' ? 'fa-users text-pink' : 'fa-calendar text-purple';
-            var onclick = ev.type === 'shared' ? "Polyculy.viewSharedEvent(" + ev.id + ")" : "Polyculy.viewPersonalEvent(" + ev.id + ")";
-            html += '<div class="event-card py-2 px-3 mb-2" onclick="' + onclick + '" style="cursor:pointer;">';
-            html += '<div class="event-time"><i class="fas ' + icon + ' me-1"></i>' + ev.date.toLocaleDateString() + '</div>';
-            html += '<div class="event-title small">' + ev.title + '</div>';
-            html += '</div>';
+        var dateStr = formatDateISO(currentDate);
+        var eventPromise = loadCalendarEvents(dateStr, dateStr);
+
+        eventPromise.done(function(resp) {
+            var events = resp.data || [];
+            var today = new Date();
+            var html = '<table><thead><tr><th style="width:80px;">Time</th><th>Events</th></tr></thead><tbody>';
+
+            for (var hour = 7; hour <= 22; hour++) {
+                var ampm = hour >= 12 ? 'PM' : 'AM';
+                var displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+                html += '<tr><td><span class="time-label">' + displayHour + ':00 ' + ampm + '</span></td><td style="position:relative;">';
+
+                var hourEvents = events.filter(function(e) {
+                    if (!e.start || e.start.substring(0, 10) !== dateStr) return false;
+                    var eHour = parseInt(e.start.substring(11, 13));
+                    return eHour === hour;
+                });
+
+                hourEvents.forEach(function(ev) {
+                    var evClass = ev.type === 'personal' ? 'personal' : (ev.state === 'active' ? 'shared-active' : 'shared-tentative');
+                    html += '<div class="cal-event ' + evClass + '" onclick="Polyculy.showEventDetail(\'' + ev.type + '\',' + ev.id + ')">';
+                    html += escapeHtml(ev.title) + ' (' + formatTime(ev.start) + (ev.end ? ' - ' + formatTime(ev.end) : '') + ')';
+                    html += '</div>';
+                });
+
+                if (currentDate.toDateString() === today.toDateString() && today.getHours() === hour) {
+                    var minuteOffset = (today.getMinutes() / 60) * 100;
+                    html += '<div class="current-time-line" style="top:' + minuteOffset + '%;"></div>';
+                }
+
+                html += '</td></tr>';
+            }
+
+            html += '</tbody></table>';
+            $('#calendarGrid').html(html);
         });
-        if (all.length === 0) {
-            html = '<p class="text-muted small text-center">No upcoming events</p>';
-        }
-        $('#upcomingEvents').html(html);
     }
 
-    // ── Calendar Navigation ──
-    function calNavPrev() {
-        var d = calState.currentDate;
-        if (calState.viewType === 'month') {
-            d.setMonth(d.getMonth() - 1);
-        } else if (calState.viewType === 'week') {
-            d.setDate(d.getDate() - 7);
+    function navigateCalendar(direction) {
+        if (currentView === 'month') {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+        } else if (currentView === 'week') {
+            currentDate.setDate(currentDate.getDate() + (7 * direction));
         } else {
-            d.setDate(d.getDate() - 1);
+            currentDate.setDate(currentDate.getDate() + direction);
         }
         renderCalendar();
     }
 
-    function calNavNext() {
-        var d = calState.currentDate;
-        if (calState.viewType === 'month') {
-            d.setMonth(d.getMonth() + 1);
-        } else if (calState.viewType === 'week') {
-            d.setDate(d.getDate() + 7);
-        } else {
-            d.setDate(d.getDate() + 1);
-        }
+    function setView(view) {
+        currentView = view;
+        $('.view-toggle-btn').removeClass('active');
+        $('.view-toggle-btn[data-view="' + view + '"]').addClass('active');
         renderCalendar();
     }
 
-    function calToday() {
-        calState.currentDate = new Date();
+    function setPerspective(perspective) {
+        currentPerspective = perspective;
+        $('.view-toggle-btn[data-perspective]').removeClass('active');
+        $('.view-toggle-btn[data-perspective="' + perspective + '"]').addClass('active');
         renderCalendar();
+        renderToggleBar();
     }
 
-    function setCalMode(mode) {
-        calState.mode = mode;
-        $('.mine-our-toggle .toggle-btn').removeClass('active');
-        if (mode === 'our') {
-            $('#toggleOur').addClass('active');
-            $('#filterBar').addClass('active');
-        } else {
-            $('#toggleMine').addClass('active');
-            $('#filterBar').removeClass('active');
+    function renderToggleBar() {
+        if (currentPerspective !== 'our') {
+            $('#toggleBar').hide();
+            return;
         }
-        loadCalendarData();
-    }
+        $('#toggleBar').show();
+        loadConnectedMembers().done(function(resp) {
+            if (!resp.success) return;
+            var html = '<div class="toggle-pill active" onclick="Polyculy.toggleMember(0)" style="color:var(--purple-600);">' +
+                '<span class="pill-dot" style="background:var(--purple-600);"></span>' +
+                '<span>My Calendar</span><span class="pill-switch"></span></div>';
 
-    function toggleMember(el) {
-        var $pill = $(el);
-        var uid = parseInt($pill.data('user-id'));
-        $pill.toggleClass('active');
-        if ($pill.hasClass('active')) {
-            if (calState.enabledUserIds.indexOf(uid) === -1) calState.enabledUserIds.push(uid);
-        } else {
-            calState.enabledUserIds = calState.enabledUserIds.filter(function(id) { return id !== uid; });
-        }
-        loadCalendarData();
-    }
-
-    function onDayClick(dateStr) {
-        // Pre-fill modal with clicked date
-        var dt = dateStr + 'T09:00';
-        var dtEnd = dateStr + 'T10:00';
-        $('#pe_start_time').val(dt);
-        $('#pe_end_time').val(dtEnd);
-        showPersonalEventModal();
-    }
-
-    // ── Personal Events ──
-    function showPersonalEventModal() {
-        $('#pe_event_id').val('');
-        if (!$('#pe_start_time').val()) {
-            var now = new Date();
-            now.setMinutes(0);
-            now.setHours(now.getHours() + 1);
-            var end = new Date(now);
-            end.setHours(end.getHours() + 1);
-            $('#pe_start_time').val(formatDateTime(now));
-            $('#pe_end_time').val(formatDateTime(end));
-        }
-        loadVisibilityPeople();
-        new bootstrap.Modal('#personalEventModal').show();
-    }
-
-    function loadVisibilityPeople() {
-        $.getJSON('/api/connections.cfm?action=connected', function(r) {
-            var data = r.DATA || r.data || [];
-            var fdHtml = '';
-            var bbHtml = '';
-            data.forEach(function(u) {
-                u = lk(u);
-                fdHtml += '<div class="form-check"><input class="form-check-input vis-fd" type="checkbox" value="' + u.user_id + '" data-name="' + u.display_name + '"><label class="form-check-label">' + (u.nickname || u.display_name) + '</label></div>';
-                bbHtml += '<div class="form-check"><input class="form-check-input vis-bb" type="checkbox" value="' + u.user_id + '" data-name="' + u.display_name + '"><label class="form-check-label">' + (u.nickname || u.display_name) + '</label></div>';
+            (resp.data || []).forEach(function(m) {
+                var isOn = calendarToggleStates[m.userid] !== false;
+                html += '<div class="toggle-pill' + (isOn ? ' active' : '') + '" onclick="Polyculy.toggleMember(' + m.userid + ')" style="color:' + (m.calendarcolor || '#7C3AED') + ';">' +
+                    '<span class="pill-dot" style="background:' + (m.calendarcolor || '#7C3AED') + ';"></span>' +
+                    '<span>' + escapeHtml(m.displayname) + '</span><span class="pill-switch"></span></div>';
             });
-            fdHtml += '<div class="form-check mt-1"><input class="form-check-input vis-fd-all" type="checkbox" value="all"><label class="form-check-label fw-bold">Entire Polycule</label></div>';
-            $('#fullDetailsPeople').html(fdHtml);
-            $('#busyBlockPeople').html(bbHtml);
+
+            $('#toggleBar').html(html);
         });
     }
 
-    function onVisibilityTierChange() {
-        var tier = $('#pe_visibility_tier').val();
-        if (tier === 'invisible') {
-            $('#visibilityOptions').hide();
-        } else if (tier === 'full_details') {
-            $('#visibilityOptions').show();
-            $('#fullDetailsGroup').show();
-            $('#busyBlockGroup').hide();
-        } else {
-            $('#visibilityOptions').show();
-            $('#fullDetailsGroup').show();
-            $('#busyBlockGroup').show();
-        }
+    function toggleMember(userId) {
+        if (userId === 0) return; // My Calendar always on in Our mode
+        calendarToggleStates[userId] = !calendarToggleStates[userId];
+        apiPost('/api/calendar.cfm?action=toggleState', { targetUserId: userId, isVisible: calendarToggleStates[userId] });
+        renderToggleBar();
+        renderCalendar();
     }
 
-    function savePersonalEvent() {
-        var data = {
-            event_id: $('#pe_event_id').val(),
-            title: $('#pe_title').val(),
-            start_time: $('#pe_start_time').val(),
-            end_time: $('#pe_end_time').val(),
-            all_day: $('#pe_all_day').is(':checked'),
-            address: $('#pe_address').val(),
-            reminder_minutes: $('#pe_reminder').val(),
-            event_details: $('#pe_details').val(),
-            visibility_tier: $('#pe_visibility_tier').val()
-        };
-
-        if (!data.title || !data.start_time || !data.end_time) {
-            toast('Please fill required fields', 'warning');
-            return;
-        }
-
-        $.post('/api/events.cfm?action=save', data, function(r) {
-            if (r.SUCCESS || r.success) {
-                var eventId = r.ID || r.id;
-
-                // Save visibility
-                var tier = data.visibility_tier;
-                if (tier !== 'invisible') {
-                    var visData = [];
-                    if ($('.vis-fd-all').is(':checked')) {
-                        // All connected users get full details
-                        $('.vis-fd').each(function() {
-                            visData.push({ target_user_id: parseInt($(this).val()), visibility_type: 'full_details' });
-                        });
-                    } else {
-                        $('.vis-fd:checked').each(function() {
-                            visData.push({ target_user_id: parseInt($(this).val()), visibility_type: 'full_details' });
-                        });
-                    }
-                    if (tier === 'mixed') {
-                        $('.vis-bb:checked').each(function() {
-                            var uid = parseInt($(this).val());
-                            if (!visData.some(function(v) { return v.target_user_id === uid; })) {
-                                visData.push({ target_user_id: uid, visibility_type: 'busy_block' });
-                            }
-                        });
-                    }
-                    if (visData.length > 0) {
-                        $.post('/api/events.cfm?action=setVisibility', {
-                            event_id: eventId,
-                            visibility_data: JSON.stringify(visData)
-                        });
-                    }
-                }
-
-                bootstrap.Modal.getInstance('#personalEventModal').hide();
-                toast(r.MESSAGE || r.message || 'Event saved');
-                loadCalendarData();
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-    }
-
-    function cancelPersonalEvent(eventId) {
-        $.post('/api/events.cfm?action=cancel', { event_id: eventId }, function(r) {
-            toast('Event cancelled');
-            window.location.href = '/views/calendar/month.cfm';
-        }, 'json');
-    }
-
-    function viewPersonalEvent(id) {
-        window.location.href = '/views/events/personal.cfm?id=' + id;
-    }
-
-    // ── Shared Events ──
-    function showSharedEventModal() {
-        $('#se_event_id').val('');
-        $('#se_title').val('');
-        $('#seStep1').show();
-        $('#seStep2').hide();
-        var now = new Date();
-        now.setMinutes(0);
-        now.setHours(now.getHours() + 1);
-        var end = new Date(now);
-        end.setHours(end.getHours() + 2);
-        $('#se_start_time').val(formatDateTime(now));
-        $('#se_end_time').val(formatDateTime(end));
-        new bootstrap.Modal('#sharedEventModal').show();
-    }
-
-    function sharedEventStep2() {
-        if (!$('#se_title').val() || !$('#se_start_time').val()) {
-            toast('Please fill event details', 'warning');
-            return;
-        }
-        $('#seStep1').hide();
-        $('#seStep2').show();
-
-        // Load connected users as potential participants
-        $.getJSON('/api/connections.cfm?action=connected', function(r) {
-            var data = r.DATA || r.data || [];
-            var html = '';
-            data.forEach(function(u) {
-                u = lk(u);
-                html += '<div class="form-check mb-2 p-2 bg-purple-light rounded">';
-                html += '<input class="form-check-input se-participant" type="checkbox" value="' + u.user_id + '" id="sep_' + u.user_id + '">';
-                html += '<label class="form-check-label ms-2" for="sep_' + u.user_id + '">';
-                html += '<strong>' + (u.nickname || u.display_name) + '</strong>';
-                html += '</label>';
-                html += '<select class="form-select form-select-sm float-end" style="width:120px;" id="sept_' + u.user_id + '">';
-                html += '<option value="required">Required</option><option value="optional">Optional</option>';
-                html += '</select>';
+    function showEventDetail(type, eventId) {
+        if (type === 'personal') {
+            apiGet('/api/events.cfm?action=get&id=' + eventId).done(function(resp) {
+                if (!resp.success) return;
+                var ev = resp.data;
+                var html = '<div class="invitation-card">' +
+                    '<div class="inv-title">' + escapeHtml(ev.title) + '</div>' +
+                    '<div class="inv-meta"><i class="far fa-clock me-1"></i>' + formatDateTime(ev.start_time) + (ev.end_time ? ' - ' + formatTime(ev.end_time) : '') + '</div>';
+                if (ev.address) html += '<div class="inv-meta"><i class="fas fa-map-marker-alt me-1"></i>' + escapeHtml(ev.address) + '</div>';
+                if (ev.event_details) html += '<div class="inv-meta">' + escapeHtml(ev.event_details) + '</div>';
                 html += '</div>';
+                showModal('Event Details', html);
             });
-            if (data.length === 0) {
-                html = '<p class="text-muted">No connected users to invite. Connect with someone first!</p>';
-            }
-            $('#seParticipantList').html(html);
-        });
-    }
-
-    function saveSharedEvent() {
-        var participants = [];
-        var formData = {
-            title: $('#se_title').val(),
-            start_time: $('#se_start_time').val(),
-            end_time: $('#se_end_time').val(),
-            address: $('#se_address').val(),
-            event_details: $('#se_details').val(),
-            participant_visibility: $('#se_participant_visibility').val(),
-            participants: ''
-        };
-
-        var pids = [];
-        $('.se-participant:checked').each(function() {
-            var uid = $(this).val();
-            pids.push(uid);
-            formData['attendance_' + uid] = $('#sept_' + uid).val();
-        });
-        formData.participants = pids.join(',');
-
-        $.post('/api/shared-events.cfm?action=create', formData, function(r) {
-            if (r.SUCCESS || r.success) {
-                bootstrap.Modal.getInstance('#sharedEventModal').hide();
-                toast('Shared event created! Invitations sent.');
-                loadCalendarData();
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-    }
-
-    function viewSharedEvent(id) {
-        window.location.href = '/views/events/shared.cfm?id=' + id;
-    }
-
-    function cancelSharedEvent(eventId) {
-        $.post('/api/shared-events.cfm?action=cancel', { event_id: eventId }, function(r) {
-            toast('Event cancelled');
-            window.location.href = '/views/calendar/month.cfm';
-        }, 'json');
-    }
-
-    function respondToInvite(eventId, response) {
-        $.post('/api/shared-events.cfm?action=respond', { event_id: eventId, response: response }, function(r) {
-            toast('Response: ' + response);
-            setTimeout(function() { window.location.href = '/views/calendar/month.cfm'; }, 800);
-        }, 'json');
-    }
-
-    // ── Proposals ──
-    function submitProposal(eventId) {
-        $.post('/api/proposals.cfm?action=create', {
-            event_id: eventId,
-            proposed_start: $('#prop_start').val(),
-            proposed_end: $('#prop_end').val(),
-            message: $('#prop_message').val()
-        }, function(r) {
-            if (r.SUCCESS || r.success) {
-                toast('Proposal submitted');
-                try { bootstrap.Modal.getInstance('#proposeTimeModal').hide(); } catch(e) {}
-                setTimeout(function() { location.reload(); }, 800);
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-    }
-
-    function acceptProposal(pid) {
-        $.post('/api/proposals.cfm?action=accept', { proposal_id: pid }, function(r) {
-            toast('Proposal accepted — event time updated');
-            setTimeout(function() { location.reload(); }, 800);
-        }, 'json');
-    }
-
-    function rejectProposal(pid) {
-        $.post('/api/proposals.cfm?action=reject', { proposal_id: pid }, function(r) {
-            toast('Proposal rejected');
-            setTimeout(function() { location.reload(); }, 800);
-        }, 'json');
-    }
-
-    // ── Ownership ──
-    function claimOwnership(eventId) {
-        $.post('/api/shared-events.cfm?action=claimOwnership', { event_id: eventId }, function(r) {
-            if (r.SUCCESS || r.success) {
-                toast('You are now the organizer!');
-                setTimeout(function() { location.reload(); }, 800);
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-    }
-
-    // ── One-Hop ──
-    function oneHopConsent(eventId, accept, allow) {
-        if (accept) {
-            // First respond to the event
-            $.post('/api/shared-events.cfm?action=respond', { event_id: eventId, response: 'accepted' });
-        }
-        if (allow) {
-            $.post('/api/shared-events.cfm?action=oneHopConsent', { event_id: eventId, consent: true }, function() {
-                toast('Consent given — downstream invite activated');
-                setTimeout(function() { window.location.href = '/views/calendar/month.cfm'; }, 800);
-            }, 'json');
         } else {
-            toast(accept ? 'Accepted without allowing one-hop' : 'Cancelled');
-            setTimeout(function() { window.location.href = '/views/calendar/month.cfm'; }, 800);
+            apiGet('/api/shared-events.cfm?action=get&id=' + eventId).done(function(resp) {
+                if (!resp.success) return;
+                var ev = resp.data;
+                var html = '<div class="invitation-card">' +
+                    '<div class="inv-header"><div class="member-avatar" style="width:32px;height:32px;font-size:0.75rem;">' + escapeHtml(ev.organizer_name ? ev.organizer_name.charAt(0) : 'O') + '</div>' +
+                    '<div><div class="inv-title">' + escapeHtml(ev.title) + '</div>' +
+                    '<div class="text-muted-sm">Organized by ' + escapeHtml(ev.organizer_name || '') + '</div></div></div>' +
+                    '<div class="inv-meta"><i class="far fa-clock me-1"></i>' + formatDateTime(ev.start_time) + (ev.end_time ? ' - ' + formatTime(ev.end_time) : '') + '</div>';
+                if (ev.address) html += '<div class="inv-meta"><i class="fas fa-map-marker-alt me-1"></i>' + escapeHtml(ev.address) + '</div>';
+                if (ev.event_details) html += '<div class="inv-meta">' + escapeHtml(ev.event_details) + '</div>';
+
+                // State badge
+                html += '<div class="mb-2"><span class="proposal-status ' + ev.global_state + '">' + ev.global_state + '</span></div>';
+
+                // Participants
+                if (ev.participants && ev.participants.length > 0) {
+                    html += '<div class="mt-2"><strong class="text-purple" style="font-size:0.85rem;">Participants</strong>';
+                    ev.participants.forEach(function(p) {
+                        html += '<div class="invite-row"><span class="invite-color" style="background:' + (p.calendar_color || '#7C3AED') + ';"></span>' +
+                            '<span class="invite-name">' + escapeHtml(p.display_name) + '</span>' +
+                            '<span class="proposal-status ' + p.response_status + '">' + p.response_status + '</span></div>';
+                    });
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                showModal('Shared Event', html);
+            });
         }
     }
 
-    // ── Participant Removal ──
-    function removeParticipant(eventId, userId) {
-        $.post('/api/shared-events.cfm?action=removeParticipant', { event_id: eventId, user_id: userId }, function(r) {
-            toast('Participant removed');
-            setTimeout(function() { window.location.href = '/views/events/shared.cfm?id=' + eventId; }, 800);
-        }, 'json');
-    }
+    function showModal(title, bodyHtml, footerHtml) {
+        var $existing = $('#polyculy-dynamic-modal');
+        if ($existing.length) $existing.remove();
 
-    // ── Info Email ──
-    function sendInfoEmail(eventId) {
-        $.post('/api/shared-events.cfm?action=sendInfoEmail', {
-            event_id: eventId,
-            recipient_name: $('#ie_name').val(),
-            recipient_email: $('#ie_email').val(),
-            message_note: $('#ie_note').val()
-        }, function(r) {
-            toast('Informational email would be sent (demo mode)');
-            setTimeout(function() { history.back(); }, 800);
-        }, 'json');
-    }
-
-    // ── Calendar Setup ──
-    function setupCalendar(method) {
-        $.post('/api/calendar.cfm?action=setup', {}, function(r) {
-            if (r.SUCCESS || r.success) {
-                window.location.href = r.REDIRECT || r.redirect || '/views/calendar/month.cfm';
-            }
-        }, 'json');
-    }
-
-    // ── Settings ──
-    function saveProfile() {
-        $.post('/api/preferences.cfm?action=update', {
-            display_name: $('#pref_display_name').val(),
-            timezone_id: $('#pref_timezone').val()
-        }, function(r) {
-            if (r.SUCCESS || r.success) {
-                toast('Profile updated');
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-        return false;
-    }
-
-    function saveTimezone() {
-        $.post('/api/preferences.cfm?action=update', {
-            display_name: $('#pref_display_name').val(),
-            timezone_id: $('#pref_timezone').val()
-        }, function(r) {
-            toast('Timezone updated');
-        }, 'json');
-    }
-
-    function changePassword() {
-        if ($('#pw_new').val() !== $('#pw_confirm').val()) {
-            toast('Passwords do not match', 'danger');
-            return false;
+        var modalHtml = '<div class="modal fade modal-polyculy" id="polyculy-dynamic-modal" tabindex="-1">' +
+            '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title"><svg width="20" height="20" viewBox="0 0 40 40"><path d="M15 6C10 6 6 10 6 15C6 25 23 34 23 34C23 34 40 25 40 15C40 10 36 6 31 6C27.5 6 24.5 8 23 11C21.5 8 18.5 6 15 6Z" fill="url(#hg)"/><defs><linearGradient id="hg" x1="6" y1="6" x2="40" y2="34"><stop stop-color="#A855F7"/><stop offset="1" stop-color="#7C3AED"/></linearGradient></defs></svg> ' + title + '</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+            '<div class="modal-body">' + bodyHtml + '</div>';
+        if (footerHtml) {
+            modalHtml += '<div class="modal-footer">' + footerHtml + '</div>';
         }
-        $.post('/api/preferences.cfm?action=changePassword', {
-            current_password: $('#pw_current').val(),
-            new_password: $('#pw_new').val()
-        }, function(r) {
-            if (r.SUCCESS || r.success) {
-                toast('Password changed');
-                $('#pw_current, #pw_new, #pw_confirm').val('');
-            } else {
-                toast(r.MESSAGE || r.message, 'danger');
-            }
-        }, 'json');
-        return false;
+        modalHtml += '</div></div></div>';
+
+        $('body').append(modalHtml);
+        var modal = new bootstrap.Modal(document.getElementById('polyculy-dynamic-modal'));
+        modal.show();
     }
 
-    function updateNotifPref(type, enabled, mode) {
-        $.post('/api/notifications.cfm?action=updatePreference', {
-            notification_type: type,
-            is_enabled: enabled,
-            delivery_mode: mode || 'instant'
-        });
+    // ---- Helpers ----
+    function formatDateISO(date) {
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, '0');
+        var d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
     }
 
-    // ── Public API ──
+    function formatTime(dateStr) {
+        if (!dateStr) return '';
+        try {
+            var str = dateStr.replace(/\{ts\s+'(.+)'\}/, '$1');
+            var d = new Date(str);
+            if (isNaN(d)) return dateStr.substring(11, 16);
+            var h = d.getHours();
+            var m = String(d.getMinutes()).padStart(2, '0');
+            var ampm = h >= 12 ? 'PM' : 'AM';
+            h = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+            return h + ':' + m + ' ' + ampm;
+        } catch (e) { return ''; }
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '';
+        try {
+            var str = dateStr.replace(/\{ts\s+'(.+)'\}/, '$1');
+            var d = new Date(str);
+            if (isNaN(d)) return dateStr;
+            var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() + ' ' + formatTime(dateStr);
+        } catch (e) { return dateStr; }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ---- Public API ----
     return {
-        // Notifications
-        loadNotifications: loadNotifications,
-        readNotif: readNotif,
-        markAllNotifRead: markAllNotifRead,
+        apiGet: apiGet,
+        apiPost: apiPost,
+        showAlert: showAlert,
+        normalizeKeys: normalizeKeys,
         // Auth
+        login: login,
         logout: logout,
+        signup: signup,
+        completeSignup: completeSignup,
+        // Notifications
+        loadNotificationCount: loadNotificationCount,
+        toggleNotifications: toggleNotifications,
+        markNotificationRead: markNotificationRead,
+        markAllNotificationsRead: markAllNotificationsRead,
         // Connections
-        loadConnections: loadConnections,
-        loadPendingRequests: loadPendingRequests,
-        sendInvite: sendInvite,
-        acceptConnection: acceptConnection,
-        loadAvailableLicences: loadAvailableLicences,
+        loadPolycule: loadPolycule,
+        loadConnectedMembers: loadConnectedMembers,
+        sendConnectionRequest: sendConnectionRequest,
+        confirmConnection: confirmConnection,
+        revokeConnection: revokeConnection,
         giftLicence: giftLicence,
-        confirmRevocation: confirmRevocation,
         // Calendar
-        initCalendar: initCalendar,
-        calNavPrev: calNavPrev,
-        calNavNext: calNavNext,
-        calToday: calToday,
-        setCalMode: setCalMode,
-        toggleMember: toggleMember,
-        onDayClick: onDayClick,
-        // Personal Events
-        showPersonalEventModal: showPersonalEventModal,
-        onVisibilityTierChange: onVisibilityTierChange,
-        savePersonalEvent: savePersonalEvent,
-        cancelPersonalEvent: cancelPersonalEvent,
-        viewPersonalEvent: viewPersonalEvent,
-        editPersonalEvent: function(id) { viewPersonalEvent(id); },
-        // Shared Events
-        showSharedEventModal: showSharedEventModal,
-        sharedEventStep2: sharedEventStep2,
-        saveSharedEvent: saveSharedEvent,
-        viewSharedEvent: viewSharedEvent,
-        cancelSharedEvent: cancelSharedEvent,
-        respondToInvite: respondToInvite,
-        editSharedEvent: function(id) { viewSharedEvent(id); },
-        // Proposals
-        submitProposal: submitProposal,
-        acceptProposal: acceptProposal,
-        rejectProposal: rejectProposal,
-        // Ownership
-        claimOwnership: claimOwnership,
-        // One-hop
-        oneHopConsent: oneHopConsent,
-        // Participants
-        removeParticipant: removeParticipant,
-        // Info Email
-        sendInfoEmail: sendInfoEmail,
-        // Calendar Setup
+        loadCalendarEvents: loadCalendarEvents,
+        loadOverlayEvents: loadOverlayEvents,
         setupCalendar: setupCalendar,
-        // Settings
-        saveProfile: saveProfile,
-        saveTimezone: saveTimezone,
-        changePassword: changePassword,
-        updateNotifPref: updateNotifPref,
-        // Utilities
-        toast: toast,
-        lk: lk
+        initCalendar: initCalendar,
+        renderCalendar: renderCalendar,
+        navigateCalendar: navigateCalendar,
+        setView: setView,
+        setPerspective: setPerspective,
+        renderToggleBar: renderToggleBar,
+        toggleMember: toggleMember,
+        showEventDetail: showEventDetail,
+        // Events
+        createPersonalEvent: createPersonalEvent,
+        createSharedEvent: createSharedEvent,
+        respondToInvitation: respondToInvitation,
+        // Sharing
+        initSharingControls: initSharingControls,
+        // UI
+        showModal: showModal,
+        formatDateISO: formatDateISO,
+        formatTime: formatTime,
+        formatDateTime: formatDateTime,
+        escapeHtml: escapeHtml
     };
 
-})(jQuery);
+})();
+
+// Init on page load
+$(document).ready(function() {
+    Polyculy.loadNotificationCount();
+    // Refresh notification count every 30 seconds
+    setInterval(Polyculy.loadNotificationCount, 30000);
+});

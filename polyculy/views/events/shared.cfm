@@ -1,194 +1,242 @@
-<cf_main pageTitle="Shared Event" activePage="calendar">
-<cfscript>
-    sharedSvc = new model.SharedEventService();
-    eventId = url.id ?: 0;
-    evt = sharedSvc.getById(eventId);
-</cfscript>
+<cf_main pageTitle="Invite to Shared Event" showNav="true">
+<cfoutput>
+<div class="page-container">
+    <div class="page-header">
+        <h2 class="page-title"><i class="fas fa-share-alt me-2"></i>Invite to Shared Event</h2>
+    </div>
 
-<div class="container" style="max-width:800px;">
-    <cfif evt.recordCount>
-        <cfoutput>
-        <div class="polyculy-card card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="mb-0"><i class="fas fa-users me-2 text-purple"></i>#htmlEditFormat(evt.title)#</h4>
-                <span class="badge badge-#evt.global_state eq 'tentative' ? 'tentative' : (evt.global_state eq 'active' ? 'active-event' : 'cancelled')#">
-                    #evt.global_state#
-                </span>
+    <div class="card-polyculy" style="max-width:800px;">
+        <!--- Section: Event Details --->
+        <div class="accordion-section active" id="seDetailsSection">
+            <div class="card-header-poly accordion-header" onclick="toggleSection('seDetailsSection')">
+                <h5><i class="fas fa-chevron-down me-2"></i>Event Details</h5>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-clock me-1"></i>Start</label>
-                        <p>#dateFormat(evt.start_time, 'mmm dd, yyyy')# #timeFormat(evt.start_time, 'h:mm tt')#</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-clock me-1"></i>End</label>
-                        <p>#dateFormat(evt.end_time, 'mmm dd, yyyy')# #timeFormat(evt.end_time, 'h:mm tt')#</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-user me-1"></i>Organizer</label>
-                        <p>#htmlEditFormat(evt.organizer_name)#</p>
-                    </div>
-                    <cfif len(evt.address)>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-map-marker-alt me-1"></i>Location</label>
-                        <p>#htmlEditFormat(evt.address)#</p>
-                    </div>
-                    </cfif>
-                    <cfif len(evt.event_details)>
-                    <div class="col-12">
-                        <label class="form-label text-muted"><i class="fas fa-info-circle me-1"></i>Details</label>
-                        <p>#htmlEditFormat(evt.event_details)#</p>
-                    </div>
-                    </cfif>
+            <div class="card-body-poly accordion-body">
+                <div class="mb-3">
+                    <label class="form-label-poly">Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="seTitle" placeholder="e.g., Dinner with Riley" required>
                 </div>
-
-                <!-- Participants -->
-                <hr>
-                <h6 class="text-purple"><i class="fas fa-users me-2"></i>Participants</h6>
-                <div id="participantList">Loading...</div>
-
-                <!-- Proposals -->
-                <hr>
-                <h6 class="text-purple"><i class="fas fa-calendar-check me-2"></i>Time Proposals</h6>
-                <div id="proposalList">Loading...</div>
-            </div>
-            <div class="card-footer d-flex justify-content-between">
-                <a href="/views/calendar/month.cfm" class="btn btn-polyculy-outline">
-                    <i class="fas fa-arrow-left me-1"></i>Back
-                </a>
-                <div>
-                    <cfif evt.organizer_user_id eq session.userId>
-                        <button class="btn btn-polyculy-outline" onclick="Polyculy.editSharedEvent(#evt.shared_event_id#)">
-                            <i class="fas fa-edit me-1"></i>Edit
-                        </button>
-                    <cfelse>
-                        <button class="btn btn-polyculy-outline" data-bs-toggle="modal" data-bs-target="##proposeTimeModal">
-                            <i class="fas fa-clock me-1"></i>Propose New Time
-                        </button>
-                    </cfif>
-                    <cfif evt.global_state neq "cancelled">
-                        <cfif evt.organizer_user_id eq session.userId>
-                            <button class="btn btn-danger" onclick="if(confirm('Cancel this event for all participants?')) Polyculy.cancelSharedEvent(#evt.shared_event_id#)">
-                                <i class="fas fa-times me-1"></i>Cancel Event
-                            </button>
-                        </cfif>
-                    </cfif>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label-poly">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="seStartDate" required>
+                    </div>
+                    <div class="col-md-2"><label class="form-label-poly">Hour</label>
+                        <select class="form-select" id="seStartHour"><cfloop from="1" to="12" index="h"><option value="#h#"<cfif h eq 8> selected</cfif>>#h#</option></cfloop></select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label-poly">Min</label>
+                        <select class="form-select" id="seStartMinute"><option value="00">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option></select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label-poly">AM/PM</label>
+                        <select class="form-select" id="seStartAmPm"><option value="AM">AM</option><option value="PM" selected>PM</option></select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="seAllDay"><label class="form-check-label" for="seAllDay">All Day</label></div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3" id="seEndRow">
+                    <div class="col-md-4"><label class="form-label-poly">End Date</label><input type="date" class="form-control" id="seEndDate"></div>
+                    <div class="col-md-2"><label class="form-label-poly">Hour</label>
+                        <select class="form-select" id="seEndHour"><cfloop from="1" to="12" index="h"><option value="#h#"<cfif h eq 9> selected</cfif>>#h#</option></cfloop></select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label-poly">Min</label>
+                        <select class="form-select" id="seEndMinute"><option value="00">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option></select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label-poly">AM/PM</label>
+                        <select class="form-select" id="seEndAmPm"><option value="AM">AM</option><option value="PM" selected>PM</option></select>
+                    </div>
+                </div>
+                <div class="mb-3"><label class="form-label-poly">Event Details</label><textarea class="form-control" id="seDetails" rows="2"></textarea></div>
+                <div class="mb-3"><label class="form-label-poly">Address</label><input type="text" class="form-control" id="seAddress"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label-poly">Reminder</label>
+                        <select class="form-select" id="seReminder"><option value="">None</option><option value="5">5 min</option><option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 hour</option></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-poly">Reminder Scope</label>
+                        <div class="view-toggle-group mt-1">
+                            <button class="view-toggle-btn active" data-scope="me" onclick="setReminderScope('me')">Me</button>
+                            <button class="view-toggle-btn" data-scope="all" onclick="setReminderScope('all')">All</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-poly">Participant Visibility</label>
+                        <div class="view-toggle-group mt-1">
+                            <button class="view-toggle-btn active" data-pvis="visible" onclick="setParticipantVis('visible')">Visible to all</button>
+                            <button class="view-toggle-btn" data-pvis="hidden" onclick="setParticipantVis('hidden')">Hidden</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Ownership Transfer Banner -->
-        <cfif evt.ownership_transfer_active>
-            <div class="alert alert-warning">
-                <i class="fas fa-crown me-2"></i>
-                <strong>This event needs a new organizer!</strong>
-                Claim it before #dateFormat(evt.ownership_transfer_deadline, 'mmm dd, yyyy')# #timeFormat(evt.ownership_transfer_deadline, 'h:mm tt')#.
-                <button class="btn btn-sm btn-polyculy ms-2" onclick="Polyculy.claimOwnership(#evt.shared_event_id#)">
-                    <i class="fas fa-hand-paper me-1"></i>Claim
-                </button>
+        <!--- Section: Invite Others --->
+        <div class="accordion-section" id="seInviteSection">
+            <div class="card-header-poly accordion-header" onclick="toggleSection('seInviteSection')">
+                <h5><i class="fas fa-chevron-right me-2"></i>Invite Others <span class="text-danger">*</span></h5>
             </div>
-        </cfif>
-        </cfoutput>
-    <cfelse>
-        <div class="empty-state">
-            <i class="fas fa-calendar-times"></i>
-            <h4>Event Not Found</h4>
-            <a href="/views/calendar/month.cfm" class="btn btn-polyculy mt-2">Back to Calendar</a>
-        </div>
-    </cfif>
-</div>
+            <div class="card-body-poly accordion-body" style="display:none;">
+                <div class="d-flex gap-3 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="inviteMode" id="inviteAll" value="all">
+                        <label class="form-check-label" for="inviteAll">All</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="inviteMode" id="inviteSelect" value="select" checked>
+                        <label class="form-check-label" for="inviteSelect">Select</label>
+                    </div>
+                </div>
 
-<!-- Propose Time Modal -->
-<div class="modal fade" id="proposeTimeModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Propose New Time</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Proposed Start</label>
-                    <input type="datetime-local" class="form-control" id="prop_start">
+                <div id="participantList">
+                    <div class="text-muted py-2"><i class="fas fa-spinner fa-spin"></i> Loading connected members...</div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Proposed End</label>
-                    <input type="datetime-local" class="form-control" id="prop_end">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Message (optional)</label>
-                    <textarea class="form-control" id="prop_message" rows="2" placeholder="Why this time works better..."></textarea>
+
+                <!--- Conflict Warning --->
+                <div class="conflict-panel" id="conflictPanel" style="display:none;">
+                    <div class="conflict-header"><i class="fas fa-exclamation-triangle me-1"></i> Time Conflict Detected</div>
+                    <div id="conflictDetails"></div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="conflictAck">
+                        <label class="form-check-label">I understand that I am requesting a time they may be busy.</label>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-polyculy-outline" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-polyculy" onclick="Polyculy.submitProposal(<cfoutput>#eventId#</cfoutput>)">
-                    <i class="fas fa-paper-plane me-1"></i>Submit Proposal
+        </div>
+
+        <div class="card-body-poly">
+            <div class="d-flex gap-2">
+                <a href="/views/calendar/month.cfm" class="btn btn-outline-secondary">Cancel</a>
+                <button class="btn btn-primary-purple" onclick="sendSharedEvent()">
+                    <i class="fas fa-paper-plane me-1"></i>Send Invites
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<cfif evt.recordCount>
 <script>
-$(function() {
-    var eid = <cfoutput>#eventId#</cfoutput>;
-    // Load participants
-    $.getJSON('/api/shared-events.cfm?action=get&id=' + eid, function(r) {
-        var data = r.DATA || r.data || {};
-        var parts = data.participants || data.PARTICIPANTS || [];
-        var html = '';
-        parts.forEach(function(p) {
-            var name = p.DISPLAY_NAME || p.display_name;
-            var status = p.RESPONSE_STATUS || p.response_status;
-            var removed = p.IS_REMOVED || p.is_removed;
-            if (removed) return;
-            var statusClass = 'response-' + status;
-            var icon = status === 'accepted' ? 'fa-check-circle' : status === 'declined' ? 'fa-times-circle' : status === 'maybe' ? 'fa-question-circle' : 'fa-hourglass-half';
-            html += '<div class="d-flex align-items-center gap-2 mb-2">';
-            html += '<i class="fas ' + icon + ' ' + statusClass + '"></i> ';
-            html += '<strong>' + name + '</strong> <span class="text-muted small">(' + status + ')</span>';
-            html += '</div>';
-        });
-        $('#participantList').html(html || '<p class="text-muted">No participants yet.</p>');
-    });
+var reminderScope = 'me';
+var participantVisibility = 'visible';
 
-    // Load proposals
-    $.getJSON('/api/proposals.cfm?action=listForEvent&event_id=' + eid, function(r) {
-        var data = r.DATA || r.data || [];
-        var html = '';
-        if (data.length === 0) {
-            html = '<p class="text-muted">No proposals yet.</p>';
+$(document).ready(function() {
+    var today = Polyculy.formatDateISO(new Date());
+    $('##seStartDate').val(today);
+    $('##seEndDate').val(today);
+    loadInvitePeople();
+    $('input[name="inviteMode"]').on('change', function() {
+        if ($(this).val() === 'all') {
+            $('.invite-check').prop('checked', true).prop('disabled', true);
+            $('.attendance-toggle').prop('disabled', false);
         } else {
-            data.forEach(function(p) {
-                var pid = p.PROPOSAL_ID || p.proposal_id;
-                var pname = p.PROPOSER_NAME || p.proposer_name;
-                var status = p.STATUS || p.status;
-                var pstart = p.PROPOSED_START || p.proposed_start;
-                var pend = p.PROPOSED_END || p.proposed_end;
-                var msg = p.MESSAGE || p.message || '';
-                html += '<div class="event-card mb-2">';
-                html += '<div class="d-flex justify-content-between">';
-                html += '<div><strong>' + pname + '</strong> proposed: ' + pstart + ' — ' + pend;
-                if (msg) html += '<br><small class="text-muted">' + msg + '</small>';
-                html += '</div>';
-                html += '<span class="badge badge-' + (status === 'active' ? 'tentative' : status === 'accepted' ? 'active-event' : 'cancelled') + '">' + status + '</span>';
-                html += '</div>';
-                if (status === 'active') {
-                    html += '<div class="mt-2 text-end">';
-                    html += '<button class="btn btn-sm btn-success me-1" onclick="Polyculy.acceptProposal(' + pid + ')"><i class="fas fa-check me-1"></i>Accept</button>';
-                    html += '<button class="btn btn-sm btn-danger" onclick="Polyculy.rejectProposal(' + pid + ')"><i class="fas fa-times me-1"></i>Reject</button>';
-                    html += '</div>';
-                }
-                html += '</div>';
-            });
+            $('.invite-check').prop('checked', false).prop('disabled', false);
+            $('.attendance-toggle').prop('disabled', true);
         }
-        $('#proposalList').html(html);
     });
 });
-</script>
-</cfif>
 
+function toggleSection(sectionId) {
+    var $section = $('##' + sectionId);
+    var $body = $section.find('.accordion-body');
+    var $icon = $section.find('.accordion-header .fas');
+    if ($section.hasClass('active')) {
+        $section.removeClass('active'); $body.slideUp(200);
+        $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+    } else {
+        $section.addClass('active'); $body.slideDown(200);
+        $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+    }
+}
+
+function setReminderScope(scope) {
+    reminderScope = scope;
+    $('[data-scope]').removeClass('active');
+    $('[data-scope="' + scope + '"]').addClass('active');
+}
+
+function setParticipantVis(vis) {
+    participantVisibility = vis;
+    $('[data-pvis]').removeClass('active');
+    $('[data-pvis="' + vis + '"]').addClass('active');
+}
+
+function loadInvitePeople() {
+    Polyculy.loadConnectedMembers().done(function(resp) {
+        if (!resp.success) return;
+        var html = '';
+        var colors = ['##22C55E','##3B82F6','##F59E0B','##A855F7','##EC4899','##06B6D4','##EF4444'];
+        (resp.data || []).forEach(function(m, i) {
+            html += '<div class="invite-row">' +
+                '<span class="invite-color" style="background:' + (m.calendarcolor || colors[i % colors.length]) + ';"></span>' +
+                '<div class="form-check flex-grow-1">' +
+                '<input class="form-check-input invite-check" type="checkbox" value="' + m.userid + '" id="inv_' + m.userid + '" onchange="onInviteCheck(this)">' +
+                '<label class="form-check-label invite-name" for="inv_' + m.userid + '">' + Polyculy.escapeHtml(m.displayname) + '</label></div>' +
+                '<div class="view-toggle-group attendance-toggle" style="font-size:0.75rem;" data-uid="' + m.userid + '">' +
+                '<button class="view-toggle-btn active btn-xs" data-att="required" onclick="setAttendance(' + m.userid + ',\'required\',this)" disabled>Required</button>' +
+                '<button class="view-toggle-btn btn-xs" data-att="optional" onclick="setAttendance(' + m.userid + ',\'optional\',this)" disabled>Optional</button>' +
+                '</div></div>';
+        });
+        $('##participantList').html(html || '<div class="text-muted">No connected members to invite.</div>');
+    });
+}
+
+function onInviteCheck(el) {
+    var uid = $(el).val();
+    var $toggle = $('.attendance-toggle[data-uid="' + uid + '"] button');
+    if (el.checked) { $toggle.prop('disabled', false); }
+    else { $toggle.prop('disabled', true); }
+}
+
+function setAttendance(uid, type, btn) {
+    $(btn).closest('.attendance-toggle').find('.view-toggle-btn').removeClass('active');
+    $(btn).addClass('active');
+}
+
+function sendSharedEvent() {
+    var title = $('##seTitle').val().trim();
+    if (!title) { Polyculy.showAlert('Title is required.', 'error'); return; }
+
+    var participants = [];
+    var formData = {
+        title: title,
+        startDate: $('##seStartDate').val(),
+        startHour: $('##seStartHour').val(),
+        startMinute: $('##seStartMinute').val(),
+        startAmPm: $('##seStartAmPm').val(),
+        endDate: $('##seEndDate').val() || $('##seStartDate').val(),
+        endHour: $('##seEndHour').val(),
+        endMinute: $('##seEndMinute').val(),
+        endAmPm: $('##seEndAmPm').val(),
+        allDay: $('##seAllDay').is(':checked') ? 'on' : '',
+        eventDetails: $('##seDetails').val(),
+        address: $('##seAddress').val(),
+        reminderMinutes: $('##seReminder').val(),
+        reminderScope: reminderScope,
+        participantVisibility: participantVisibility
+    };
+
+    $('.invite-check:checked').each(function() {
+        var uid = $(this).val();
+        participants.push(uid);
+        var att = $('.attendance-toggle[data-uid="' + uid + '"] .active').data('att') || 'required';
+        formData['attendance_' + uid] = att;
+    });
+
+    if (participants.length === 0) {
+        Polyculy.showAlert('Please select at least one participant.', 'error');
+        return;
+    }
+    formData.participants = participants.join(',');
+
+    Polyculy.createSharedEvent(formData).done(function(resp) {
+        if (resp.success) {
+            Polyculy.showAlert('Invitations sent!', 'success');
+            setTimeout(function() { window.location.href = '/views/calendar/month.cfm'; }, 1500);
+        } else {
+            Polyculy.showAlert(resp.message || 'Error.', 'error');
+        }
+    });
+}
+</script>
+</cfoutput>
 </cf_main>

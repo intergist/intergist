@@ -1,95 +1,83 @@
-<cf_main pageTitle="Personal Event" activePage="calendar">
-<cfscript>
-    // This page handles viewing a personal event by ID
-    eventSvc = new model.EventService();
-    eventId = url.id ?: 0;
-    evt = eventSvc.getById(eventId);
-</cfscript>
+<cf_main pageTitle="Personal Events" showNav="true">
+<cfoutput>
+<div class="page-container">
+    <div class="page-header">
+        <h2 class="page-title"><i class="fas fa-calendar me-2"></i>My Personal Events</h2>
+        <button class="btn btn-primary-purple btn-sm" onclick="window.location.href='/views/calendar/month.cfm'">
+            <i class="fas fa-plus me-1"></i>Add Personal Event
+        </button>
+    </div>
 
-<div class="container" style="max-width:700px;">
-    <cfif evt.recordCount>
-        <cfoutput>
-        <div class="polyculy-card card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="mb-0"><i class="fas fa-calendar me-2 text-purple"></i>#htmlEditFormat(evt.title)#</h4>
-                <span class="badge badge-#evt.visibility_tier eq 'invisible' ? 'tentative' : 'active-event'#">
-                    #evt.visibility_tier#
-                </span>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-clock me-1"></i>Start</label>
-                        <p>#dateFormat(evt.start_time, 'mmm dd, yyyy')# #timeFormat(evt.start_time, 'h:mm tt')#</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted"><i class="fas fa-clock me-1"></i>End</label>
-                        <p>#dateFormat(evt.end_time, 'mmm dd, yyyy')# #timeFormat(evt.end_time, 'h:mm tt')#</p>
-                    </div>
-                    <cfif len(evt.address)>
-                    <div class="col-12">
-                        <label class="form-label text-muted"><i class="fas fa-map-marker-alt me-1"></i>Location</label>
-                        <p>#htmlEditFormat(evt.address)#</p>
-                    </div>
-                    </cfif>
-                    <cfif len(evt.event_details)>
-                    <div class="col-12">
-                        <label class="form-label text-muted"><i class="fas fa-info-circle me-1"></i>Details</label>
-                        <p>#htmlEditFormat(evt.event_details)#</p>
-                    </div>
-                    </cfif>
-                </div>
-
-                <!-- Visibility Settings -->
-                <hr>
-                <h6 class="text-purple"><i class="fas fa-eye me-2"></i>Visibility</h6>
-                <div id="eventVisibility">Loading...</div>
-            </div>
-            <div class="card-footer d-flex justify-content-between">
-                <a href="/views/calendar/month.cfm" class="btn btn-polyculy-outline">
-                    <i class="fas fa-arrow-left me-1"></i>Back
-                </a>
-                <div>
-                    <button class="btn btn-polyculy-outline" onclick="Polyculy.editPersonalEvent(#evt.event_id#)">
-                        <i class="fas fa-edit me-1"></i>Edit
-                    </button>
-                    <button class="btn btn-danger" onclick="if(confirm('Cancel this event?')) Polyculy.cancelPersonalEvent(#evt.event_id#)">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                </div>
+    <div class="card-polyculy">
+        <div class="card-body-poly">
+            <div class="table-responsive">
+                <table class="table table-polyculy" id="personalEventsTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Visibility</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsBody">
+                        <tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-        </cfoutput>
-    <cfelse>
-        <div class="empty-state">
-            <i class="fas fa-calendar-times"></i>
-            <h4>Event Not Found</h4>
-            <a href="/views/calendar/month.cfm" class="btn btn-polyculy mt-2">Back to Calendar</a>
-        </div>
-    </cfif>
+    </div>
 </div>
 
-<cfif evt.recordCount>
 <script>
-$(function() {
-    $.getJSON('/api/events.cfm?action=get&id=<cfoutput>#eventId#</cfoutput>', function(r) {
-        var data = r.DATA || r.data || {};
-        var vis = data.visibility || data.VISIBILITY || [];
-        var html = '';
-        if (vis.length === 0) {
-            html = '<p class="text-muted">No one else can see this event.</p>';
-        } else {
-            vis.forEach(function(v) {
-                var name = v.TARGET_NAME || v.target_name;
-                var type = v.VISIBILITY_TYPE || v.visibility_type;
-                var icon = type === 'full_details' ? 'fa-eye text-purple' : 'fa-eye-slash text-pink';
-                html += '<div class="d-flex align-items-center gap-2 mb-2"><i class="fas ' + icon + '"></i> <strong>' + name + '</strong> — ' + type.replace('_', ' ') + '</div>';
-            });
-        }
-        $('#eventVisibility').html(html);
-    });
+$(document).ready(function() {
+    loadPersonalEvents();
 });
-</script>
-</cfif>
 
+function loadPersonalEvents() {
+    Polyculy.apiGet('/api/events.cfm?action=list').done(function(resp) {
+        if (!resp.success) return;
+        var events = resp.data || [];
+        if (events.length === 0) {
+            $('##eventsBody').html('<tr><td colspan="5" class="text-center text-muted">No personal events yet.</td></tr>');
+            return;
+        }
+        var html = '';
+        events.forEach(function(ev) {
+            var visLabel = ev.visibility_tier || 'invisible';
+            if (visLabel === 'invisible') visLabel = '<span class="text-muted">Private</span>';
+            else if (visLabel === 'full_details') visLabel = '<span class="text-success">Full Details</span>';
+            else visLabel = '<span class="text-info">Busy Block</span>';
+
+            html += '<tr>' +
+                '<td><strong>' + Polyculy.escapeHtml(ev.title) + '</strong></td>' +
+                '<td>' + Polyculy.formatDateTime(ev.start_time) + '</td>' +
+                '<td>' + Polyculy.formatTime(ev.start_time) + (ev.end_time ? ' - ' + Polyculy.formatTime(ev.end_time) : '') + '</td>' +
+                '<td>' + visLabel + '</td>' +
+                '<td>' +
+                '<button class="btn btn-sm btn-outline-purple me-1" onclick="Polyculy.showEventDetail(\'personal\',' + ev.event_id + ')"><i class="fas fa-eye"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger" onclick="deleteEvent(' + ev.event_id + ')"><i class="fas fa-trash"></i></button>' +
+                '</td></tr>';
+        });
+        $('##eventsBody').html(html);
+        if ($.fn.DataTable) {
+            $('##personalEventsTable').DataTable({ destroy: true, pageLength: 10, order: [[1, 'desc']] });
+        }
+    });
+}
+
+function deleteEvent(eventId) {
+    if (!confirm('Delete this event?')) return;
+    Polyculy.apiPost('/api/events.cfm?action=delete', { eventId: eventId }).done(function(resp) {
+        if (resp.success) {
+            Polyculy.showAlert('Event deleted.', 'success');
+            loadPersonalEvents();
+        } else {
+            Polyculy.showAlert(resp.message || 'Error.', 'error');
+        }
+    });
+}
+</script>
+</cfoutput>
 </cf_main>

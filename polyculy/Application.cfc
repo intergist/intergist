@@ -10,10 +10,10 @@ component {
     this.mappings["/model"]      = getDirectoryFromPath(getCurrentTemplatePath()) & "model";
     this.mappings["/api"]        = getDirectoryFromPath(getCurrentTemplatePath()) & "api";
 
-    // Custom tag paths for <cf_main> layout tag
+    // Custom tag paths for layout
     this.customTagPaths = getDirectoryFromPath(getCurrentTemplatePath()) & "views/layouts";
 
-    // H2 embedded datasource
+    // H2 embedded datasource for demo
     this.datasources["polyculy"] = {
         class: "org.h2.Driver",
         connectionString: "jdbc:h2:#getDirectoryFromPath(getCurrentTemplatePath())#data/polyculy;MODE=MSSQLServer;AUTO_SERVER=TRUE"
@@ -23,16 +23,15 @@ component {
     function onApplicationStart() {
         var dbInit = new components.DatabaseInit();
         dbInit.initialize();
-        application.csrfKey = hash(createUUID());
         return true;
     }
 
     function onSessionStart() {
         session.isLoggedIn = false;
         session.userId = 0;
+        session.userEmail = "";
         session.displayName = "";
-        session.email = "";
-        session.csrfToken = hash(createUUID() & now());
+        session.csrfToken = hash(createUUID() & now(), "SHA-256");
     }
 
     function onRequestStart(targetPage) {
@@ -41,26 +40,22 @@ component {
             onApplicationStart();
         }
 
-        // Public pages that don't require auth
-        var publicPages = ["/index.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm", "/api/auth.cfm", "/api/licences.cfm"];
-        var currentPage = lCase(arguments.targetPage);
+        // Determine if this is a public page (no auth required)
+        var publicPages = ["/index.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm"];
+        var publicAPIs = ["/api/auth.cfm"];
+        var requestedPage = arguments.targetPage;
 
-        // Allow API endpoints and static assets without auth check for specific actions
-        if (findNoCase("/assets/", currentPage) || findNoCase("/api/auth.cfm", currentPage)) {
-            return true;
-        }
-
-        // Check authentication for non-public pages
         var isPublic = false;
         for (var pg in publicPages) {
-            if (currentPage == lCase(pg)) {
-                isPublic = true;
-                break;
-            }
+            if (requestedPage contains pg) { isPublic = true; break; }
+        }
+        for (var pg in publicAPIs) {
+            if (requestedPage contains pg) { isPublic = true; break; }
         }
 
+        // Redirect to login if not authenticated and not on public page
         if (!isPublic && (!structKeyExists(session, "isLoggedIn") || !session.isLoggedIn)) {
-            location(url="/index.cfm", addToken=false);
+            location(url="/index.cfm", addtoken=false);
             return false;
         }
 
@@ -68,7 +63,12 @@ component {
     }
 
     function onError(exception, eventName) {
-        writeDump(var=exception, label="Application Error");
+        if (structKeyExists(url, "format") && url.format == "json") {
+            cfheader(name="Content-Type", value="application/json");
+            writeOutput(serializeJSON({ "success": false, "message": exception.message }));
+        } else {
+            include "/views/auth/login.cfm";
+        }
     }
 
 }

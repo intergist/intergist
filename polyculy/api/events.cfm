@@ -11,70 +11,119 @@
     try {
         switch (action) {
             case "list":
-                q = eventSvc.getPersonalEventsForUser(session.userId, url.start_date ?: "", url.end_date ?: "");
-                data = [];
-                for (row in q) { arrayAppend(data, row); }
-                response["data"] = data;
+                q = eventSvc.getPersonalEventsForUser(session.userId, url.startDate ?: "", url.endDate ?: "");
+                events = [];
+                for (row in q) { arrayAppend(events, row); }
+                response["data"] = events;
                 break;
 
             case "get":
-                q = eventSvc.getById(url.id);
+                if (!structKeyExists(url, "id")) {
+                    response = { "success": false, "message": "Event ID required." };
+                    break;
+                }
+                q = eventSvc.getPersonalEvent(url.id);
                 if (q.recordCount) {
                     row = {};
                     for (col in listToArray(q.columnList)) { row[lCase(col)] = q[col][1]; }
-                    // Get visibility data
-                    vis = eventSvc.getVisibilityForEvent(url.id);
+                    // Get visibility records
+                    vis = eventSvc.getVisibilityRecords(url.id);
                     visData = [];
                     for (v in vis) { arrayAppend(visData, v); }
                     row["visibility"] = visData;
                     response["data"] = row;
                 } else {
-                    response = { "success": false, "message": "Event not found" };
+                    response = { "success": false, "message": "Event not found." };
                 }
                 break;
 
-            case "save":
-                data = {
-                    owner_user_id: session.userId,
+            case "create":
+                startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm;
+                endTimeStr = form.endDate ?: form.startDate;
+                endTimeStr = endTimeStr & " " & (form.endHour ?: form.startHour) & ":" & (form.endMinute ?: form.startMinute) & " " & (form.endAmPm ?: form.startAmPm);
+
+                eventData = {
+                    userId: session.userId,
                     title: form.title,
-                    start_time: form.start_time,
-                    end_time: form.end_time,
-                    all_day: form.all_day ?: false,
-                    timezone_id: form.timezone_id ?: session.timezone ?: "America/New_York",
-                    event_details: form.event_details ?: "",
+                    startTime: parseDateTime(startTimeStr),
+                    endTime: parseDateTime(endTimeStr),
+                    allDay: structKeyExists(form, "allDay"),
+                    timezoneId: session.timezoneId ?: "America/New_York",
+                    eventDetails: form.eventDetails ?: "",
                     address: form.address ?: "",
-                    reminder_minutes: form.reminder_minutes ?: "",
-                    visibility_tier: form.visibility_tier ?: "invisible"
+                    reminderMinutes: form.reminderMinutes ?: "",
+                    visibilityTier: form.visibilityTier ?: "invisible"
                 };
 
-                if (structKeyExists(form, "event_id") && len(form.event_id)) {
-                    eventSvc.update(form.event_id, data);
-                    auditSvc.log(session.userId, "event_update", "personal_event", form.event_id, "Updated personal event: #form.title#");
-                    response["message"] = "Event updated";
-                    response["id"] = form.event_id;
-                } else {
-                    newId = eventSvc.create(data);
-                    auditSvc.log(session.userId, "event_create", "personal_event", newId, "Created personal event: #form.title#");
-                    response["message"] = "Event created";
-                    response["id"] = newId;
+                newId = eventSvc.createPersonalEvent(eventData);
+
+                // Handle visibility settings
+                fullDetailUsers = [];
+                busyBlockUsers = [];
+                if (structKeyExists(form, "fullDetailUsers") && len(form.fullDetailUsers)) {
+                    fullDetailUsers = listToArray(form.fullDetailUsers);
                 }
+                if (structKeyExists(form, "busyBlockUsers") && len(form.busyBlockUsers)) {
+                    busyBlockUsers = listToArray(form.busyBlockUsers);
+                }
+                eventSvc.setVisibility(newId, eventData.visibilityTier, fullDetailUsers, busyBlockUsers);
+
+                auditSvc.log("event_created", "personal_event", newId,
+                    "Created personal event: #form.title#", session.userId);
+                response["message"] = "Event created.";
+                response["id"] = newId;
                 break;
 
-            case "setVisibility":
-                visData = deserializeJSON(form.visibility_data);
-                eventSvc.setVisibility(form.event_id, visData);
-                auditSvc.log(session.userId, "event_visibility_update", "personal_event", form.event_id, "Updated event visibility");
-                response["message"] = "Visibility updated";
+            case "update":
+                if (!structKeyExists(form, "eventId")) {
+                    response = { "success": false, "message": "Event ID required." };
+                    break;
+                }
+                startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm;
+                endTimeStr = (form.endDate ?: form.startDate) & " " & (form.endHour ?: form.startHour) & ":" & (form.endMinute ?: form.startMinute) & " " & (form.endAmPm ?: form.startAmPm);
+
+                eventData = {
+                    userId: session.userId,
+                    title: form.title,
+                    startTime: parseDateTime(startTimeStr),
+                    endTime: parseDateTime(endTimeStr),
+                    allDay: structKeyExists(form, "allDay"),
+                    eventDetails: form.eventDetails ?: "",
+                    address: form.address ?: "",
+                    reminderMinutes: form.reminderMinutes ?: "",
+                    visibilityTier: form.visibilityTier ?: "invisible"
+                };
+                eventSvc.updatePersonalEvent(form.eventId, eventData);
+
+                // Update visibility
+                fullDetailUsers = [];
+                busyBlockUsers = [];
+                if (structKeyExists(form, "fullDetailUsers") && len(form.fullDetailUsers)) {
+                    fullDetailUsers = listToArray(form.fullDetailUsers);
+                }
+                if (structKeyExists(form, "busyBlockUsers") && len(form.busyBlockUsers)) {
+                    busyBlockUsers = listToArray(form.busyBlockUsers);
+                }
+                eventSvc.setVisibility(form.eventId, eventData.visibilityTier, fullDetailUsers, busyBlockUsers);
+
+                auditSvc.log("event_updated", "personal_event", form.eventId,
+                    "Updated personal event: #form.title#", session.userId);
+                response["message"] = "Event updated.";
                 break;
 
-            case "cancel":
-                eventSvc.cancel(form.event_id);
-                auditSvc.log(session.userId, "event_cancel", "personal_event", form.event_id, "Cancelled personal event");
-                response["message"] = "Event cancelled";
+            case "delete":
+                if (!structKeyExists(form, "eventId")) {
+                    response = { "success": false, "message": "Event ID required." };
+                    break;
+                }
+                eventSvc.deletePersonalEvent(form.eventId, session.userId);
+                auditSvc.log("event_deleted", "personal_event", form.eventId,
+                    "Deleted personal event", session.userId);
+                response["message"] = "Event deleted.";
                 break;
 
             default:
-                response = { "success": false, "message": "Unknown action" };
+                response = { "success": false, "message": "Unknown action: #action#" };
         }
     } catch (any e) {
         response = { "success": false, "message": e.message };

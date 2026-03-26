@@ -12,5 +12,9 @@
     },
     "app":{
         "cfengine":"lucee@5"
-    }
+    },
+    "port=5000":true,
+    "rewritesEnable=false":true,
+    "name=polyculy":true,
+    "console=false":true
 }

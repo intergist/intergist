@@ -1,53 +1,54 @@
-<cf_main pageTitle="Indirect Invitation" activePage="calendar">
-
-<div class="container" style="max-width:600px;">
-    <div class="polyculy-card card">
-        <div class="card-header">
-            <h4 class="mb-0"><i class="fas fa-paper-plane me-2 text-purple"></i>Indirect Invitation</h4>
-        </div>
-        <div class="card-body">
-            <cfoutput>
-            <cfset eventId = url.event_id ?: 0>
-            </cfoutput>
-
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                This invitation was extended to you through a one-hop connection.
-                A person you're connected to has consented to pass this invitation to you.
+<cf_main pageTitle="Invitation Unlocked" showNav="true">
+<cfoutput>
+<div class="page-container">
+    <div class="d-flex justify-content-center">
+        <div class="card-polyculy" style="max-width:550px;">
+            <div class="card-header-poly" style="background:linear-gradient(135deg,##E9D5FF,##FBCFE8);">
+                <h5><i class="fas fa-unlock me-2"></i>Invitation Unlocked</h5>
             </div>
-
-            <div id="indirectEventDetails">
-                <div class="text-center py-3"><i class="fas fa-spinner fa-spin text-purple"></i></div>
-            </div>
-
-            <div class="text-center mt-3">
-                <button class="btn btn-success me-2" onclick="Polyculy.respondToInvite(<cfoutput>#eventId#</cfoutput>, 'accepted')">
-                    <i class="fas fa-check me-1"></i>Accept
-                </button>
-                <button class="btn btn-polyculy-outline me-2" onclick="Polyculy.respondToInvite(<cfoutput>#eventId#</cfoutput>, 'maybe')">
-                    <i class="fas fa-question me-1"></i>Maybe
-                </button>
-                <button class="btn btn-outline-danger" onclick="Polyculy.respondToInvite(<cfoutput>#eventId#</cfoutput>, 'declined')">
-                    <i class="fas fa-times me-1"></i>Decline
-                </button>
+            <div class="card-body-poly" id="indirectCard">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-$(function() {
-    var eid = <cfoutput>#url.event_id ?: 0#</cfoutput>;
-    if (eid) {
-        $.getJSON('/api/shared-events.cfm?action=get&id=' + eid, function(r) {
-            var d = r.DATA || r.data || {};
-            var html = '<h5>' + (d.TITLE || d.title) + '</h5>';
-            html += '<p><i class="fas fa-clock me-1"></i>' + (d.START_TIME || d.start_time) + ' — ' + (d.END_TIME || d.end_time) + '</p>';
-            if (d.ADDRESS || d.address) html += '<p><i class="fas fa-map-marker-alt me-1"></i>' + (d.ADDRESS || d.address) + '</p>';
-            $('#indirectEventDetails').html(html);
-        });
-    }
-});
-</script>
+var eventId = new URLSearchParams(window.location.search).get('id');
+var linkPerson = new URLSearchParams(window.location.search).get('linkPerson') || 'someone';
 
+$(document).ready(function() {
+    if (!eventId) return;
+    Polyculy.apiGet('/api/shared-events.cfm?action=get&id=' + eventId).done(function(resp) {
+        if (!resp.success || !resp.data) return;
+        var ev = resp.data;
+        var html = '<div class="alert-inline success mb-3" style="position:static;">' +
+            '<i class="fas fa-link me-1"></i>You are now eligible to join this event because <strong>' +
+            Polyculy.escapeHtml(linkPerson) + '</strong> accepted and allowed the invitation chain.</div>' +
+            '<div class="inv-meta mb-2"><i class="fas fa-calendar me-2"></i>' + Polyculy.escapeHtml(ev.title) + '</div>' +
+            '<div class="inv-meta mb-2"><i class="fas fa-user me-2"></i>Organized by ' + Polyculy.escapeHtml(ev.organizer_name || '') + '</div>' +
+            '<div class="inv-meta mb-3"><i class="far fa-clock me-2"></i>' + Polyculy.formatDateTime(ev.start_time) +
+            (ev.end_time ? ' &ndash; ' + Polyculy.formatTime(ev.end_time) : '') + '</div>' +
+            '<p class="text-muted-sm mb-3">If the link person later declines, your invitation remains valid unless the organizer removes you.</p>' +
+            '<div class="d-flex gap-2 flex-wrap">' +
+            '<button class="btn btn-primary-purple" onclick="respondIndirect(\'accepted\')"><i class="fas fa-check me-1"></i>Accept</button>' +
+            '<button class="btn btn-outline-danger" onclick="respondIndirect(\'declined\')"><i class="fas fa-times me-1"></i>Decline</button>' +
+            '<button class="btn btn-outline-secondary" onclick="respondIndirect(\'maybe\')"><i class="fas fa-question me-1"></i>Maybe</button>' +
+            '<button class="btn btn-outline-purple" onclick="window.location.href=\'/views/events/propose-time.cfm?id=' + eventId + '\'"><i class="fas fa-clock me-1"></i>Propose New Time</button></div>';
+        $('##indirectCard').html(html);
+    });
+});
+
+function respondIndirect(response) {
+    Polyculy.respondToInvitation(eventId, response).done(function(resp) {
+        if (resp.success) {
+            Polyculy.showAlert('Response recorded: ' + response, 'success');
+            setTimeout(function() { window.location.href = '/views/calendar/month.cfm'; }, 1500);
+        } else {
+            Polyculy.showAlert(resp.message || 'Error.', 'error');
+        }
+    });
+}
+</script>
+</cfoutput>
 </cf_main>

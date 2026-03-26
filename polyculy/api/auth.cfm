@@ -6,101 +6,121 @@
     licSvc = new model.LicenceService();
     auditSvc = new model.AuditService();
 
-    action = url.action ?: "login";
+    param name="url.action" default="login";
+    param name="form.action" default="";
+    action = len(form.action) ? form.action : url.action;
     response = { "success": true };
 
     try {
         switch (action) {
             case "login":
-                q = userSvc.authenticate(form.email, form.password);
-                if (q.recordCount) {
+                if (!structKeyExists(form, "email") || !structKeyExists(form, "password")) {
+                    response = { "success": false, "message": "Email and password are required." };
+                    break;
+                }
+                q = userSvc.authenticate(trim(form.email), form.password);
+                if (q.recordCount > 0) {
                     session.isLoggedIn = true;
                     session.userId = q.user_id;
+                    session.userEmail = q.email;
                     session.displayName = q.display_name;
-                    session.email = q.email;
-                    session.timezone = q.timezone_id;
+                    session.timezoneId = q.timezone_id;
                     session.calendarCreated = q.calendar_created;
-                    session.csrfToken = hash(createUUID() & now());
-                    response["data"] = {
-                        user_id: q.user_id,
-                        display_name: q.display_name,
-                        email: q.email,
-                        calendar_created: q.calendar_created,
-                        csrf_token: session.csrfToken
+                    response["message"] = "Login successful.";
+                    response["user"] = {
+                        "userId": q.user_id,
+                        "email": q.email,
+                        "displayName": q.display_name,
+                        "calendarCreated": q.calendar_created
                     };
-                    response["message"] = "Login successful";
-                    response["redirect"] = q.calendar_created ? "/views/calendar/month.cfm" : "/views/calendar/setup.cfm";
                 } else {
-                    response = { "success": false, "message": "Invalid email or password" };
+                    response = { "success": false, "message": "Invalid email or password." };
                 }
                 break;
 
             case "signup":
-                // Validate licence code
-                licQ = licSvc.validate(form.licence_code);
-                if (!licQ.recordCount) {
-                    response = { "success": false, "message": "Invalid or already redeemed licence code" };
+                if (!structKeyExists(form, "email") || !structKeyExists(form, "licenceCode")) {
+                    response = { "success": false, "message": "Email and licence code are required." };
+                    break;
+                }
+                email = trim(form.email);
+                code = trim(form.licenceCode);
+
+                existingUser = userSvc.getByEmail(email);
+                if (existingUser.recordCount > 0) {
+                    response = { "success": false, "message": "An account with this email already exists." };
                     break;
                 }
 
-                // Check if email already exists
-                existingUser = userSvc.getByEmail(form.email);
-                if (existingUser.recordCount) {
-                    response = { "success": false, "message": "An account with this email already exists" };
+                licence = licSvc.validateCode(code);
+                if (licence.recordCount == 0) {
+                    response = { "success": false, "message": "Invalid or already redeemed licence code." };
                     break;
                 }
 
-                // Create user
-                newUserId = userSvc.create({
-                    email: form.email,
-                    password: form.password,
-                    display_name: form.display_name,
-                    timezone_id: form.timezone_id ?: "America/New_York"
-                });
+                if (licence.status == "gifted_pending" && len(licence.gifted_to_email) && licence.gifted_to_email != email) {
+                    response = { "success": false, "message": "This licence code was gifted to a different email address." };
+                    break;
+                }
 
-                // Redeem licence
-                licSvc.redeem(form.licence_code, newUserId);
+                response["step"] = "set_password";
+                response["email"] = email;
+                response["licenceCode"] = code;
+                break;
 
-                // Auto-login
-                session.isLoggedIn = true;
-                session.userId = newUserId;
-                session.displayName = form.display_name;
-                session.email = form.email;
-                session.timezone = form.timezone_id ?: "America/New_York";
-                session.calendarCreated = false;
-                session.csrfToken = hash(createUUID() & now());
+            case "completeSignup":
+                if (!structKeyExists(form, "email") || !structKeyExists(form, "password") || !structKeyExists(form, "licenceCode") || !structKeyExists(form, "displayName")) {
+                    response = { "success": false, "message": "All fields are required." };
+                    break;
+                }
 
-                auditSvc.log(newUserId, "user_signup", "user", newUserId, "New user signed up: #form.display_name#");
+                email = trim(form.email);
+                password = form.password;
+                code = trim(form.licenceCode);
+                displayName = trim(form.displayName);
 
-                // Activate any pending connections for this email
+                if (len(password) < 6) {
+                    response = { "success": false, "message": "Password must be at least 6 characters." };
+                    break;
+                }
+
+                newUserId = userSvc.create(email, password, displayName);
+                licSvc.redeemCode(code, newUserId);
+
                 queryExecute(
                     "UPDATE connections SET user_id_2 = :uid, status = 'awaiting_confirmation', updated_at = CURRENT_TIMESTAMP
                      WHERE invited_email = :email AND status IN ('awaiting_signup','licence_gifted_awaiting_signup')",
                     {
                         uid: { value: newUserId, cfsqltype: "cf_sql_integer" },
-                        email: { value: form.email, cfsqltype: "cf_sql_varchar" }
-                    },
-                    { datasource: "polyculy" }
+                        email: { value: email, cfsqltype: "cf_sql_varchar" }
+                    }
                 );
 
-                response["data"] = { user_id: newUserId, csrf_token: session.csrfToken };
-                response["message"] = "Account created successfully";
-                response["redirect"] = "/views/calendar/setup.cfm";
+                auditSvc.log("user_signup", "user", newUserId, "New user signed up: #displayName#", newUserId);
+
+                session.isLoggedIn = true;
+                session.userId = newUserId;
+                session.userEmail = email;
+                session.displayName = displayName;
+                session.timezoneId = "America/New_York";
+                session.calendarCreated = false;
+
+                response["message"] = "Account created successfully.";
+                response["userId"] = newUserId;
                 break;
 
             case "logout":
                 structClear(session);
                 session.isLoggedIn = false;
-                response["message"] = "Logged out";
-                response["redirect"] = "/index.cfm";
+                response["message"] = "Logged out.";
                 break;
 
-            case "getCsrfToken":
-                response["data"] = { csrf_token: session.csrfToken ?: "" };
+            case "recovery":
+                response["message"] = "If this email exists, a recovery link has been sent.";
                 break;
 
             default:
-                response = { "success": false, "message": "Unknown action" };
+                response = { "success": false, "message": "Unknown action: #action#" };
         }
     } catch (any e) {
         response = { "success": false, "message": e.message };
