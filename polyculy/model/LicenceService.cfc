@@ -26,7 +26,7 @@ component {
             { email: { value: arguments.toEmail, cfsqltype: "cf_sql_varchar" } }
         );
         if (existing.recordCount > 0) {
-            return { success: false, message: "A licence has already been gifted to this person." };
+            return { success: false, message: "A license has already been gifted to this person." };
         }
 
         queryExecute(
@@ -38,7 +38,7 @@ component {
                 uid: { value: arguments.fromUserId, cfsqltype: "cf_sql_integer" }
             }
         );
-        return { success: true, message: "Licence gifted successfully." };
+        return { success: true, message: "License gifted successfully." };
     }
 
     function isGiftedTo(required string email) {

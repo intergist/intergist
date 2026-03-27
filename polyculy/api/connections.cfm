@@ -128,7 +128,7 @@
                         }
                     );
                     auditSvc.log("licence_gifted", "licence", 0,
-                        "Licence gifted to #trim(form.email)#", session.userId);
+                        "License gifted to #trim(form.email)#", session.userId);
                 }
                 response = result;
                 break;

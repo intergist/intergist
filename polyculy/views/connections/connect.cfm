@@ -201,13 +201,13 @@ function hideConn(connId) {
 }
 
 function giftLic(email) {
-    if (!confirm('Gift a licence to ' + email + '?')) return;
+    if (!confirm('Gift a license to ' + email + '?')) return;
     Polyculy.giftLicence(email).done(function(resp) {
         if (resp.success) {
-            Polyculy.showAlert('Licence gifted!', 'success');
+            Polyculy.showAlert('License gifted!', 'success');
             loadPolyculeList();
         } else {
-            Polyculy.showAlert(resp.message || 'Error gifting licence.', 'error');
+            Polyculy.showAlert(resp.message || 'Error gifting license.', 'error');
         }
     });
 }

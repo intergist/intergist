@@ -24,7 +24,7 @@ VALUES ('morgan@polyculy.demo', 'D3AD9315B7BE5DD53B31A273B3B3ABA5DEFE700808305AA
 INSERT INTO users (email, password_hash, display_name, avatar_url, timezone_id, calendar_created)
 VALUES ('sam@polyculy.demo', 'D3AD9315B7BE5DD53B31A273B3B3ABA5DEFE700808305AA16A3062B76658A791', 'Sam', NULL, 'America/Los_Angeles', TRUE);
 
--- Licence Codes
+-- License Codes
 INSERT INTO licences (licence_code, licence_type, redeemed_by_user_id, status, redeemed_at)
 VALUES ('ALPHA-001-FREE', 'alpha', 1, 'redeemed', CURRENT_TIMESTAMP);
 

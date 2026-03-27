@@ -40,7 +40,7 @@
 
             case "signup":
                 if (!structKeyExists(form, "email") || !structKeyExists(form, "licenceCode")) {
-                    response = { "success": false, "message": "Email and licence code are required." };
+                    response = { "success": false, "message": "Email and license code are required." };
                     break;
                 }
                 email = trim(form.email);
@@ -54,12 +54,12 @@
 
                 licence = licSvc.validateCode(code);
                 if (licence.recordCount == 0) {
-                    response = { "success": false, "message": "Invalid or already redeemed licence code." };
+                    response = { "success": false, "message": "Invalid or already redeemed license code." };
                     break;
                 }
 
                 if (licence.status == "gifted_pending" && len(licence.gifted_to_email) && licence.gifted_to_email != email) {
-                    response = { "success": false, "message": "This licence code was gifted to a different email address." };
+                    response = { "success": false, "message": "This license code was gifted to a different email address." };
                     break;
                 }
 
