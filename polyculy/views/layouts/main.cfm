@@ -36,7 +36,7 @@
 <body>
     <cfoutput>
     <!-- Top Navbar -->
-    <nav class="navbar-polyculy">
+    <!---? <nav class="navbar-polyculy">
         <div class="navbar-brand-area">
             <a href="/views/calendar/month.cfm" class="navbar-brand-link">
                 <svg class="logo-icon" width="36" height="36" viewBox="0 0 40 40" fill="none">
@@ -83,7 +83,7 @@
                 </a>
             </cfif>
         </div>
-    </nav>
+    </nav> --->
     </cfoutput>
 
     <!-- Notification Overlay (click outside to close) -->
@@ -97,10 +97,10 @@
     </div>
 
     <footer class="app-footer">
-        <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">
+<!---         <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">
             Created with Perplexity Computer
-        </a>
-        &middot; Polyculy &copy; <cfoutput>#year(now())#</cfoutput>
+        </a>&middot; --->
+         Polyculy &copy; <cfoutput>#year(now())#</cfoutput>
     </footer>
 
 </body>

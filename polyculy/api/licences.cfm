@@ -28,8 +28,8 @@
 
             case "gift":
                 licSvc.giftLicence(session.userId, form.to_email, form.licence_code);
-                auditSvc.log(session.userId, "licence_gift", "licence", 0, "Gifted licence #form.licence_code# to #form.to_email#");
-                notifSvc.create(session.userId, "licence_gifted", "Licence Gifted", "You gifted a licence to #form.to_email#.", "licence", 0);
+                auditSvc.log(session.userId, "licence_gift", "licence", 0, "Gifted license #form.licence_code# to #form.to_email#");
+                notifSvc.create(session.userId, "licence_gifted", "License Gifted", "You gifted a license to #form.to_email#.", "licence", 0);
                 response["message"] = "License gifted successfully";
                 break;
 
