@@ -3,7 +3,7 @@ component {
     function create(required numeric eventId, required numeric userId, required string proposedStart, required string proposedEnd, string message = "") {
         // Withdraw any existing active proposal by this user for this event
         queryExecute(
-            "UPDATE proposals SET status = 'withdrawn', updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.proposals SET status = 'withdrawn', updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid AND proposer_user_id = :uid AND status = 'active'",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -12,7 +12,7 @@ component {
         );
 
         queryExecute(
-            "INSERT INTO proposals (shared_event_id, proposer_user_id, proposed_start, proposed_end, message, status)
+            "INSERT INTO polyculy.dbo.proposals (shared_event_id, proposer_user_id, proposed_start, proposed_end, message, status)
              VALUES (:eid, :uid, :pstart, :pend, :msg, 'active')",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -27,7 +27,8 @@ component {
     function getActiveByEvent(required numeric eventId) {
         return queryExecute(
             "SELECT p.*, u.display_name AS proposer_name, u.avatar_url AS proposer_avatar
-             FROM proposals p JOIN users u ON p.proposer_user_id = u.user_id
+             FROM polyculy.dbo.proposals p 
+						 JOIN polyculy.dbo.users u ON p.proposer_user_id = u.user_id
              WHERE p.shared_event_id = :eid AND p.status = 'active'
              ORDER BY p.created_at DESC",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
@@ -37,7 +38,7 @@ component {
     function getAllByEvent(required numeric eventId) {
         return queryExecute(
             "SELECT p.*, u.display_name AS proposer_name, u.avatar_url AS proposer_avatar
-             FROM proposals p JOIN users u ON p.proposer_user_id = u.user_id
+             FROM polyculy.dbo.proposals p JOIN users u ON p.proposer_user_id = u.user_id
              WHERE p.shared_event_id = :eid
              ORDER BY p.created_at DESC",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
@@ -46,20 +47,20 @@ component {
 
     function acceptProposal(required numeric proposalId) {
         var proposal = queryExecute(
-            "SELECT * FROM proposals WHERE proposal_id = :pid AND status = 'active'",
+            "SELECT * FROM polyculy.dbo.proposals WHERE proposal_id = :pid AND status = 'active'",
             { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
         );
         if (!proposal.recordCount) return { success: false, message: "Proposal not found or not active." };
 
         // Mark proposal as accepted
         queryExecute(
-            "UPDATE proposals SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
+            "UPDATE polyculy.dbo.proposals SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
             { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
         );
 
         // Reject all other active proposals for this event
         queryExecute(
-            "UPDATE proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid AND proposal_id != :pid AND status = 'active'",
             {
                 eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" },
@@ -69,7 +70,7 @@ component {
 
         // Update event time (material edit)
         queryExecute(
-            "UPDATE shared_events SET start_time = :st, end_time = :et, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_events SET start_time = :st, end_time = :et, updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid",
             {
                 eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" },
@@ -80,7 +81,7 @@ component {
 
         // Reset all participant acceptances to pending
         queryExecute(
-            "UPDATE shared_event_participants SET response_status = 'pending', updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_event_participants SET response_status = 'pending', updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid AND is_removed = FALSE",
             { eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" } }
         );
@@ -94,7 +95,7 @@ component {
 
     function rejectProposal(required numeric proposalId) {
         queryExecute(
-            "UPDATE proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
+            "UPDATE polyculy.dbo.proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
             { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
         );
     }

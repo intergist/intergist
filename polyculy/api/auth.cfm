@@ -88,7 +88,7 @@
                 licSvc.redeemCode(code, newUserId);
 
                 queryExecute(
-                    "UPDATE connections SET user_id_2 = :uid, status = 'awaiting_confirmation', updated_at = CURRENT_TIMESTAMP
+                    "UPDATE polyculy.dbo.connections SET user_id_2 = :uid, status = 'awaiting_confirmation', updated_at = CURRENT_TIMESTAMP
                      WHERE invited_email = :email AND status IN ('awaiting_signup','licence_gifted_awaiting_signup')",
                     {
                         uid: { value: newUserId, cfsqltype: "cf_sql_integer" },

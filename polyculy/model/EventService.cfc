@@ -2,7 +2,7 @@ component {
 
     function createPersonalEvent(required struct data) {
         queryExecute(
-            "INSERT INTO personal_events (owner_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, visibility_tier)
+            "INSERT INTO polyculy.dbo.personal_events (owner_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, visibility_tier)
              VALUES (:owner, :title, :startTime, :endTime, :allDay, :tz, :details, :addr, :reminder, :visibility)",
             {
                 owner: { value: data.userId, cfsqltype: "cf_sql_integer" },
@@ -23,7 +23,7 @@ component {
 
     function updatePersonalEvent(required numeric eventId, required struct data) {
         queryExecute(
-            "UPDATE personal_events SET title = :title, start_time = :startTime, end_time = :endTime,
+            "UPDATE polyculy.dbo.personal_events SET title = :title, start_time = :startTime, end_time = :endTime,
              all_day = :allDay, event_details = :details, address = :addr,
              reminder_minutes = :reminder, visibility_tier = :visibility, updated_at = CURRENT_TIMESTAMP
              WHERE event_id = :eid AND owner_user_id = :owner",
@@ -44,11 +44,11 @@ component {
 
     function deletePersonalEvent(required numeric eventId, required numeric userId) {
         // Clear visibility records
-        queryExecute("DELETE FROM personal_event_visibility WHERE event_id = :eid",
+        queryExecute("DELETE FROM polyculy.dbo.personal_event_visibility WHERE event_id = :eid",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } });
         // Cancel event
         queryExecute(
-            "UPDATE personal_events SET is_cancelled = TRUE, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.personal_events SET is_cancelled = TRUE, updated_at = CURRENT_TIMESTAMP
              WHERE event_id = :eid AND owner_user_id = :uid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -60,7 +60,8 @@ component {
     function getPersonalEvent(required numeric eventId) {
         return queryExecute(
             "SELECT e.*, u.display_name AS owner_name
-             FROM personal_events e JOIN users u ON e.owner_user_id = u.user_id
+             FROM polyculy.dbo.personal_events e 
+						 			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
              WHERE e.event_id = :eid AND e.is_cancelled = FALSE",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
         );
@@ -68,7 +69,8 @@ component {
 
     function getPersonalEventsForUser(required numeric userId, string startDate = "", string endDate = "") {
         var sql = "SELECT e.*, u.display_name AS owner_name
-                   FROM personal_events e JOIN users u ON e.owner_user_id = u.user_id
+                   FROM polyculy.dbo.personal_events e 
+									 			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
                    WHERE e.owner_user_id = :uid AND e.is_cancelled = FALSE";
         var params = { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } };
 
@@ -88,9 +90,9 @@ component {
         var sql = "SELECT e.event_id, e.title, e.start_time, e.end_time, e.all_day, e.timezone_id,
                           e.event_details, e.address, e.owner_user_id, v.visibility_type,
                           u.display_name AS owner_name
-                   FROM personal_events e
-                   JOIN personal_event_visibility v ON e.event_id = v.event_id
-                   JOIN users u ON e.owner_user_id = u.user_id
+                   FROM polyculy.dbo.personal_events e
+                   			JOIN polyculy.dbo.personal_event_visibility v ON e.event_id = v.event_id
+                   			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
                    WHERE v.target_user_id = :viewer AND e.owner_user_id = :owner AND e.is_cancelled = FALSE";
         var params = {
             viewer: { value: arguments.viewerUserId, cfsqltype: "cf_sql_integer" },
@@ -110,12 +112,14 @@ component {
 
     function setVisibility(required numeric eventId, required string tier, array fullDetailUsers = [], array busyBlockUsers = []) {
         // Clear existing visibility records
-        queryExecute("DELETE FROM personal_event_visibility WHERE event_id = :eid",
+        queryExecute("DELETE FROM polyculy.dbo.personal_event_visibility WHERE event_id = :eid",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } });
 
         // Update the tier on the event itself
         queryExecute(
-            "UPDATE personal_events SET visibility_tier = :tier, updated_at = CURRENT_TIMESTAMP WHERE event_id = :eid",
+            "	UPDATE polyculy.dbo.personal_events 
+							SET visibility_tier = :tier, updated_at = CURRENT_TIMESTAMP 
+							WHERE event_id = :eid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
                 tier: { value: arguments.tier, cfsqltype: "cf_sql_varchar" }
@@ -127,7 +131,7 @@ component {
         // Insert full-details visibility records
         for (var uid in arguments.fullDetailUsers) {
             queryExecute(
-                "INSERT INTO personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'full_details')",
+                "INSERT INTO polyculy.dbo.personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'full_details')",
                 {
                     eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
                     uid: { value: uid, cfsqltype: "cf_sql_integer" }
@@ -138,7 +142,7 @@ component {
         // Insert busy-block visibility records
         for (var uid in arguments.busyBlockUsers) {
             queryExecute(
-                "INSERT INTO personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'busy_block')",
+                "INSERT INTO polyculy.dbo.personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'busy_block')",
                 {
                     eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
                     uid: { value: uid, cfsqltype: "cf_sql_integer" }
@@ -149,8 +153,9 @@ component {
 
     function getVisibilityRecords(required numeric eventId) {
         return queryExecute(
-            "SELECT v.*, u.display_name FROM personal_event_visibility v
-             JOIN users u ON v.target_user_id = u.user_id WHERE v.event_id = :eid",
+            "	SELECT v.*, u.display_name 
+							FROM  polyculy.dbo.personal_event_visibility v
+             				JOIN polyculy.dbo.users u ON v.target_user_id = u.user_id WHERE v.event_id = :eid",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
         );
     }

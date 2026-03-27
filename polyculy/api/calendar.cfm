@@ -107,7 +107,7 @@
                 // Save or get toggle state for Our mode
                 if (structKeyExists(form, "targetUserId") && structKeyExists(form, "isVisible")) {
                     existing = queryExecute(
-                        "SELECT toggle_id FROM calendar_toggle_state WHERE user_id = :uid AND target_user_id = :tid",
+                        "SELECT toggle_id FROM polyculy.dbo.calendar_toggle_state WHERE user_id = :uid AND target_user_id = :tid",
                         {
                             uid: { value: session.userId, cfsqltype: "cf_sql_integer" },
                             tid: { value: form.targetUserId, cfsqltype: "cf_sql_integer" }
@@ -115,7 +115,7 @@
                     );
                     if (existing.recordCount > 0) {
                         queryExecute(
-                            "UPDATE calendar_toggle_state SET is_visible = :vis WHERE toggle_id = :tid",
+                            "UPDATE polyculy.dbo.calendar_toggle_state SET is_visible = :vis WHERE toggle_id = :tid",
                             {
                                 tid: { value: existing.toggle_id, cfsqltype: "cf_sql_integer" },
                                 vis: { value: form.isVisible, cfsqltype: "cf_sql_bit" }
@@ -123,7 +123,7 @@
                         );
                     } else {
                         queryExecute(
-                            "INSERT INTO calendar_toggle_state (user_id, target_user_id, is_visible) VALUES (:uid, :tid, :vis)",
+                            "INSERT INTO polyculy.dbo.calendar_toggle_state (user_id, target_user_id, is_visible) VALUES (:uid, :tid, :vis)",
                             {
                                 uid: { value: session.userId, cfsqltype: "cf_sql_integer" },
                                 tid: { value: form.targetUserId, cfsqltype: "cf_sql_integer" },
@@ -135,7 +135,7 @@
                 } else {
                     // Get toggle states
                     q = queryExecute(
-                        "SELECT target_user_id, is_visible FROM calendar_toggle_state WHERE user_id = :uid",
+                        "SELECT target_user_id, is_visible FROM polyculy.dbo.calendar_toggle_state WHERE user_id = :uid",
                         { uid: { value: session.userId, cfsqltype: "cf_sql_integer" } }
                     );
                     states = {};

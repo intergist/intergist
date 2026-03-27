@@ -4,6 +4,9 @@ component {
     this.applicationTimeout = createTimeSpan(1, 0, 0, 0);
     this.sessionManagement = true;
     this.sessionTimeout = createTimeSpan(0, 2, 0, 0);
+		
+		this.datasource="polyculy";
+		application.datasource="polyculy";
 
     // Mappings
     this.mappings["/components"] = getDirectoryFromPath(getCurrentTemplatePath()) & "components";
@@ -12,13 +15,6 @@ component {
 
     // Custom tag paths for layout
     this.customTagPaths = getDirectoryFromPath(getCurrentTemplatePath()) & "views/layouts";
-
-    // H2 embedded datasource for demo
-    this.datasources["polyculy"] = {
-        class: "org.h2.Driver",
-        connectionString: "jdbc:h2:#getDirectoryFromPath(getCurrentTemplatePath())#data/polyculy;MODE=MSSQLServer;AUTO_SERVER=TRUE"
-    };
-    this.defaultdatasource = "polyculy";
 
     function onApplicationStart() {
         var dbInit = new components.DatabaseInit();
@@ -65,10 +61,14 @@ component {
     function onError(exception, eventName) {
         if (structKeyExists(url, "format") && url.format == "json") {
             cfheader(name="Content-Type", value="application/json");
-            writeOutput(serializeJSON({ "success": false, "message": exception.message }));
+            writeOutput(serializeJSON({ "success": false, "message": exception.message & " " & exception.Detail }));
         } else {
             include "/views/auth/login.cfm";
         }
     }
+		
+	/*						writeDump(var = application, label = "appl");
+							writeDump(var = this, label = "this");
+							*/
 
 }

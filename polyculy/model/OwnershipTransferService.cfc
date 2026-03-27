@@ -93,7 +93,7 @@ component {
         return queryExecute(
             "SELECT se.shared_event_id, se.title, se.start_time, se.ownership_transfer_deadline,
                     u.display_name AS organizer_name
-             FROM shared_events se
+             FROM polyculy.dbo.shared_events se
              JOIN users u ON u.user_id = se.organizer_user_id
              WHERE se.ownership_transfer_active = TRUE AND se.global_state != 'cancelled'
              ORDER BY se.ownership_transfer_deadline ASC",

@@ -77,7 +77,7 @@
 
                 // Notify the other user
                 conn = queryExecute(
-                    "SELECT user_id_1, user_id_2 FROM connections WHERE connection_id = :cid",
+                    "SELECT user_id_1, user_id_2 FROM polyculy.dbo.connections WHERE connection_id = :cid",
                     { cid: { value: form.connectionId, cfsqltype: "cf_sql_integer" } }
                 );
                 if (conn.recordCount) {
@@ -118,7 +118,7 @@
                 if (result.success) {
                     // Update connection status to licence_gifted_awaiting_signup
                     queryExecute(
-                        "UPDATE connections SET status = 'licence_gifted_awaiting_signup', updated_at = CURRENT_TIMESTAMP
+                        "UPDATE polyculy.dbo.connections SET status = 'licence_gifted_awaiting_signup', updated_at = CURRENT_TIMESTAMP
                          WHERE (invited_email = :email OR user_id_2 IN (SELECT user_id FROM users WHERE email = :email))
                          AND (user_id_1 = :uid OR initiated_by = :uid)
                          AND status = 'awaiting_signup'",

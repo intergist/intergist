@@ -5,9 +5,9 @@ component {
         return queryExecute(
             "SELECT DISTINCT se.shared_event_id, se.title, se.organizer_user_id, se.global_state,
                     se.start_time, se.end_time, u.display_name AS organizer_name,
-                    (SELECT COUNT(*) FROM shared_event_participants sp
+                    (SELECT COUNT(*) FROM polyculy.dbo.shared_event_participants sp
                      WHERE sp.shared_event_id = se.shared_event_id AND sp.is_removed = FALSE) AS total_participants,
-                    CASE WHEN (SELECT COUNT(*) FROM shared_event_participants sp
+                    CASE WHEN (SELECT COUNT(*) FROM polyculy.dbo.shared_event_participants sp
                               WHERE sp.shared_event_id = se.shared_event_id AND sp.is_removed = FALSE) <= 1
                          AND se.organizer_user_id IN (:u1, :u2)
                          THEN 'two_person' ELSE 'multi_person' END AS event_type,
@@ -20,7 +20,7 @@ component {
                                    (SELECT sp3.user_id FROM shared_event_participants sp3
                                     WHERE sp3.shared_event_id = se.shared_event_id AND sp3.is_removed = FALSE AND sp3.user_id NOT IN (:u1, :u2))))) > 0
                          THEN TRUE ELSE FALSE END AS has_other_connections
-             FROM shared_events se
+             FROM polyculy.dbo.shared_events se
              JOIN users u ON se.organizer_user_id = u.user_id
              WHERE se.global_state != 'cancelled'
              AND (se.organizer_user_id IN (:u1, :u2)
@@ -28,10 +28,10 @@ component {
                                             WHERE sp.user_id IN (:u1, :u2) AND sp.is_removed = FALSE))
              AND se.shared_event_id IN (SELECT sp4.shared_event_id FROM shared_event_participants sp4
                                         WHERE sp4.user_id = :u1 AND sp4.is_removed = FALSE
-                                        UNION SELECT se2.shared_event_id FROM shared_events se2 WHERE se2.organizer_user_id = :u1)
-             AND se.shared_event_id IN (SELECT sp5.shared_event_id FROM shared_event_participants sp5
+                                        UNION SELECT se2.shared_event_id FROM polyculy.dbo.shared_events se2 WHERE se2.organizer_user_id = :u1)
+             AND se.shared_event_id IN (SELECT sp5.shared_event_id FROM polyculy.dbo.shared_event_participants sp5
                                         WHERE sp5.user_id = :u2 AND sp5.is_removed = FALSE
-                                        UNION SELECT se3.shared_event_id FROM shared_events se3 WHERE se3.organizer_user_id = :u2)
+                                        UNION SELECT se3.shared_event_id FROM polyculy.dbo.shared_events se3 WHERE se3.organizer_user_id = :u2)
              ORDER BY se.start_time",
             {
                 u1: { value: arguments.userId1, cfsqltype: "cf_sql_integer" },

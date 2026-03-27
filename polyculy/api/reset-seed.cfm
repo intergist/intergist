@@ -12,63 +12,63 @@ try {
     // ── Delete child tables first (FK leaves) ──────────────────
 
     // Informational emails reference shared_events
-    queryExecute("DELETE FROM informational_emails WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.informational_emails WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
 
     // Proposals reference shared_events
-    queryExecute("DELETE FROM proposals WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.proposals WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
     // Also clean test-generated proposals on seed events
-    queryExecute("DELETE FROM proposals", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.proposals", {}, { datasource: "polyculy" });
 
     // Shared event participants reference shared_events
-    queryExecute("DELETE FROM shared_event_participants WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.shared_event_participants WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
 
     // Personal event visibility references personal_events
-    queryExecute("DELETE FROM personal_event_visibility WHERE event_id > 3", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.personal_event_visibility WHERE event_id > 3", {}, { datasource: "polyculy" });
 
     // ── Now safe to delete parent tables ────────────────────────
 
     // Shared events
-    queryExecute("DELETE FROM shared_events WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.shared_events WHERE shared_event_id > 4", {}, { datasource: "polyculy" });
 
     // Personal events
-    queryExecute("DELETE FROM personal_events WHERE event_id > 3", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.personal_events WHERE event_id > 3", {}, { datasource: "polyculy" });
 
     // Connections
-    queryExecute("DELETE FROM connections WHERE connection_id > 6", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.connections WHERE connection_id > 6", {}, { datasource: "polyculy" });
 
     // Notifications
-    queryExecute("DELETE FROM notifications WHERE notification_id > 3", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.notifications WHERE notification_id > 3", {}, { datasource: "polyculy" });
 
     // Audit log
-    queryExecute("DELETE FROM audit_log WHERE audit_id > 10", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.audit_log WHERE audit_id > 10", {}, { datasource: "polyculy" });
 
     // ── Reset seed data to pristine state ──────────────────────
 
     // Connections
-    queryExecute("UPDATE connections SET status = 'connected' WHERE connection_id = 1", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE connections SET status = 'awaiting_confirmation' WHERE connection_id = 2", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE connections SET status = 'awaiting_confirmation' WHERE connection_id = 3", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE connections SET status = 'licence_gifted_awaiting_signup' WHERE connection_id = 4", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE connections SET status = 'awaiting_signup' WHERE connection_id = 5", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE connections SET status = 'revoked' WHERE connection_id = 6", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'connected' WHERE connection_id = 1", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'awaiting_confirmation' WHERE connection_id = 2", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'awaiting_confirmation' WHERE connection_id = 3", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'licence_gifted_awaiting_signup' WHERE connection_id = 4", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'awaiting_signup' WHERE connection_id = 5", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.connections SET status = 'revoked' WHERE connection_id = 6", {}, { datasource: "polyculy" });
 
     // Shared events states
-    queryExecute("UPDATE shared_events SET global_state = 'tentative', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 1", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE shared_events SET global_state = 'active', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 2", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE shared_events SET global_state = 'tentative', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 3", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE shared_events SET global_state = 'active', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 4", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.shared_events SET global_state = 'tentative', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 1", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.shared_events SET global_state = 'active', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 2", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.shared_events SET global_state = 'tentative', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 3", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.shared_events SET global_state = 'active', cancellation_reason = '', ownership_transfer_active = false WHERE shared_event_id = 4", {}, { datasource: "polyculy" });
 
     // Shared event participant statuses (reset to original seed state)
-    queryExecute("UPDATE shared_event_participants SET response_status = 'pending', is_removed = false WHERE participant_id = 1", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.shared_event_participants SET response_status = 'pending', is_removed = false WHERE participant_id = 1", {}, { datasource: "polyculy" });
 
     // Notifications
-    queryExecute("UPDATE notifications SET is_read = false WHERE notification_id IN (1, 2)", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE notifications SET is_read = true WHERE notification_id = 3", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.notifications SET is_read = false WHERE notification_id IN (1, 2)", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.notifications SET is_read = true WHERE notification_id = 3", {}, { datasource: "polyculy" });
 
     // Licences
-    queryExecute("DELETE FROM licences WHERE licence_id > 10", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE licences SET status = 'available' WHERE licence_id IN (7, 8, 9, 10)", {}, { datasource: "polyculy" });
-    queryExecute("UPDATE licences SET status = 'gifted_pending' WHERE licence_id = 5", {}, { datasource: "polyculy" });
+    queryExecute("DELETE FROM polyculy.dbo.licences WHERE licence_id > 10", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.licences SET status = 'available' WHERE licence_id IN (7, 8, 9, 10)", {}, { datasource: "polyculy" });
+    queryExecute("UPDATE polyculy.dbo.licences SET status = 'gifted_pending' WHERE licence_id = 5", {}, { datasource: "polyculy" });
 
     writeOutput(serializeJSON({ "success": true, "message": "Seed data reset to pristine state." }));
 } catch (any e) {

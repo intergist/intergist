@@ -1077,3 +1077,18 @@ body {
 .alert-inline.success { background: #D1FAE5; color: #059669; border: 1px solid #6EE7B7; }
 .alert-inline.info { background: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
 .alert-inline.warning { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+
+
+.btn-purple {
+  background-color: #a372e0; /* $purple-400 */
+  border-color: #a372e0;
+  color: white; /* Or another suitable color */
+}
+
+.btn-purple:hover,
+.btn-purple:focus,
+.btn-purple:active {
+  background-color: #9063c9; /* Slightly darker shade for hover */
+  border-color: #9063c9;
+  color: white;
+}

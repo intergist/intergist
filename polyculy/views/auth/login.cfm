@@ -1,4 +1,11 @@
 <cf_main pageTitle="Login" showNav="false">
+<cfquery name="q1" datasource="polyculyTest">
+select * from polyculy.dbo.users
+</cfquery>
+<cfdump var="#q1#" expand="no"/>
+<cfdump var="#application#" expand="no"/>
+ <!--- --->
+<!--- <cfdump var="#cgi#"/> --->
 <cfoutput>
 <div class="row justify-content-center">
 	<div class="col-md-5">
@@ -58,7 +65,7 @@
 								</div> --->
 			<div class="form-message" id="loginMessage" data-testid="login-message" style="display:none;"></div>
 			<div class="row justify-content-center">
-				<button type="submit" class="btn btn-secondary btn-light btn-primary-purple col-md-5" id="loginBtn" 
+				<button type="submit" class="btn btn-purple col-md-5" id="loginBtn" 
 					data-testid="login-button">Log In</button>
 			</div>
 		</form>

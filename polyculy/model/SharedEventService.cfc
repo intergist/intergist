@@ -2,7 +2,7 @@ component {
 
     function create(required struct data) {
         queryExecute(
-            "INSERT INTO shared_events (organizer_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, reminder_scope, participant_visibility, global_state)
+            "INSERT INTO polyculy.dbo.shared_events (organizer_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, reminder_scope, participant_visibility, global_state)
              VALUES (:org, :title, :startTime, :endTime, :allDay, :tz, :details, :addr, :reminder, :scope, :pv, 'tentative')",
             {
                 org: { value: data.organizerId, cfsqltype: "cf_sql_integer" },
@@ -24,7 +24,7 @@ component {
 
     function addParticipant(required numeric eventId, required numeric userId, string attendanceType = "required", boolean isOneHop = false, numeric linkPersonUserId = 0) {
         queryExecute(
-            "INSERT INTO shared_event_participants (shared_event_id, user_id, attendance_type, is_one_hop, link_person_user_id)
+            "INSERT INTO polyculy.dbo.shared_event_participants (shared_event_id, user_id, attendance_type, is_one_hop, link_person_user_id)
              VALUES (:eid, :uid, :atype, :hop, :link)",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -39,7 +39,7 @@ component {
     function getById(required numeric eventId) {
         return queryExecute(
             "SELECT se.*, u.display_name AS organizer_name, u.email AS organizer_email
-             FROM shared_events se JOIN users u ON se.organizer_user_id = u.user_id
+             FROM polyculy.dbo.shared_events se JOIN users u ON se.organizer_user_id = u.user_id
              WHERE se.shared_event_id = :eid",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
         );
@@ -49,9 +49,9 @@ component {
         return queryExecute(
             "SELECT sep.*, u.display_name, u.email, u.avatar_url,
                     dp.calendar_color, dp.nickname
-             FROM shared_event_participants sep
-             JOIN users u ON sep.user_id = u.user_id
-             LEFT JOIN connection_display_prefs dp ON dp.target_user_id = sep.user_id
+             FROM polyculy.dbo.shared_event_participants sep
+             JOIN polyculy.dbo.users u ON sep.user_id = u.user_id
+             LEFT JOIN polyculy.dbo.connection_display_prefs dp ON dp.target_user_id = sep.user_id
              WHERE sep.shared_event_id = :eid AND sep.is_removed = FALSE
              ORDER BY sep.attendance_type, u.display_name",
             { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
@@ -60,7 +60,7 @@ component {
 
     function respondToInvitation(required numeric eventId, required numeric userId, required string response) {
         queryExecute(
-            "UPDATE shared_event_participants SET response_status = :resp, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_event_participants SET response_status = :resp, updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid AND user_id = :uid AND is_removed = FALSE",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -77,7 +77,7 @@ component {
         if (!event.recordCount || event.global_state == "cancelled") return;
 
         var q = queryExecute(
-            "SELECT COUNT(*) AS cnt FROM shared_event_participants
+            "SELECT COUNT(*) AS cnt FROM polyculy.dbo.shared_event_participants
              WHERE shared_event_id = :eid AND user_id != :org AND response_status = 'accepted' AND is_removed = FALSE",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -86,7 +86,7 @@ component {
         );
         var newState = (q.cnt > 0) ? "active" : "tentative";
         queryExecute(
-            "UPDATE shared_events SET global_state = :state, updated_at = CURRENT_TIMESTAMP WHERE shared_event_id = :eid",
+            "UPDATE polyculy.dbo.shared_events SET global_state = :state, updated_at = CURRENT_TIMESTAMP WHERE shared_event_id = :eid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
                 state: { value: newState, cfsqltype: "cf_sql_varchar" }
@@ -104,7 +104,7 @@ component {
         if ((current.address ?: "") != (data.address ?: "")) isMaterialEdit = true;
 
         queryExecute(
-            "UPDATE shared_events SET title = :title, start_time = :startTime, end_time = :endTime,
+            "UPDATE polyculy.dbo.shared_events SET title = :title, start_time = :startTime, end_time = :endTime,
              all_day = :allDay, event_details = :details, address = :addr,
              reminder_minutes = :reminder, reminder_scope = :scope,
              participant_visibility = :pv, updated_at = CURRENT_TIMESTAMP
@@ -126,7 +126,7 @@ component {
         if (isMaterialEdit) {
             // Reset all acceptances to pending
             queryExecute(
-                "UPDATE shared_event_participants SET response_status = 'pending', updated_at = CURRENT_TIMESTAMP
+                "UPDATE polyculy.dbo.shared_event_participants SET response_status = 'pending', updated_at = CURRENT_TIMESTAMP
                  WHERE shared_event_id = :eid AND is_removed = FALSE",
                 { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
             );
@@ -138,7 +138,7 @@ component {
 
     function cancelEvent(required numeric eventId, required string reason) {
         queryExecute(
-            "UPDATE shared_events SET global_state = 'cancelled', cancellation_reason = :reason, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_events SET global_state = 'cancelled', cancellation_reason = :reason, updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -149,7 +149,7 @@ component {
 
     function removeParticipant(required numeric eventId, required numeric userId) {
         queryExecute(
-            "UPDATE shared_event_participants SET is_removed = TRUE, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_event_participants SET is_removed = TRUE, updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid AND user_id = :uid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -162,11 +162,11 @@ component {
     function getEventsForUser(required numeric userId, string startDate = "", string endDate = "") {
         var sql = "SELECT se.*, u.display_name AS organizer_name,
                           sep.response_status, sep.attendance_type, sep.is_one_hop,
-                          (SELECT COUNT(*) FROM shared_event_participants sp2
+                          (SELECT COUNT(*) FROM polyculy.dbo.shared_event_participants sp2
                            WHERE sp2.shared_event_id = se.shared_event_id AND sp2.is_removed = FALSE) AS participant_count
-                   FROM shared_events se
-                   JOIN shared_event_participants sep ON se.shared_event_id = sep.shared_event_id
-                   JOIN users u ON se.organizer_user_id = u.user_id
+                   FROM polyculy.dbo.shared_events se
+                   JOIN polyculy.dbo.shared_event_participants sep ON se.shared_event_id = sep.shared_event_id
+                   JOIN polyculy.dbo.users u ON se.organizer_user_id = u.user_id
                    WHERE sep.user_id = :uid AND sep.is_removed = FALSE AND se.global_state != 'cancelled'";
         var params = { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } };
 
@@ -182,9 +182,9 @@ component {
         // Also include events where user is organizer
         sql &= " UNION SELECT se2.*, u2.display_name AS organizer_name,
                  'organizer' AS response_status, 'required' AS attendance_type, FALSE AS is_one_hop,
-                 (SELECT COUNT(*) FROM shared_event_participants sp3
+                 (SELECT COUNT(*) FROM polyculy.dbo.shared_event_participants sp3
                   WHERE sp3.shared_event_id = se2.shared_event_id AND sp3.is_removed = FALSE) AS participant_count
-                 FROM shared_events se2 JOIN users u2 ON se2.organizer_user_id = u2.user_id
+                 FROM polyculy.dbo.shared_events se2 JOIN users u2 ON se2.organizer_user_id = u2.user_id
                  WHERE se2.organizer_user_id = :uid2 AND se2.global_state != 'cancelled'";
         params["uid2"] = { value: arguments.userId, cfsqltype: "cf_sql_integer" };
 
@@ -205,7 +205,7 @@ component {
         // Check personal events that block time
         var personalConflicts = queryExecute(
             "SELECT event_id, title, start_time, end_time, 'personal' AS event_type
-             FROM personal_events
+             FROM polyculy.dbo.personal_events
              WHERE owner_user_id = :uid AND is_cancelled = FALSE
              AND start_time < :endTime AND end_time > :startTime",
             {
@@ -219,8 +219,8 @@ component {
         var sharedConflicts = queryExecute(
             "SELECT se.shared_event_id AS event_id, se.title, se.start_time, se.end_time,
                     CASE WHEN se.global_state = 'active' THEN 'hard' ELSE 'soft' END AS conflict_type
-             FROM shared_events se
-             JOIN shared_event_participants sep ON se.shared_event_id = sep.shared_event_id
+             FROM polyculy.dbo.shared_events se
+             JOIN polyculy.dbo.shared_event_participants sep ON se.shared_event_id = sep.shared_event_id
              WHERE sep.user_id = :uid AND sep.response_status = 'accepted' AND sep.is_removed = FALSE
              AND se.global_state != 'cancelled'
              AND se.start_time < :endTime AND se.end_time > :startTime",
@@ -236,7 +236,7 @@ component {
 
     function transferOwnership(required numeric eventId, required numeric newOrganizerId) {
         queryExecute(
-            "UPDATE shared_events SET organizer_user_id = :newOrg, ownership_transfer_active = FALSE,
+            "UPDATE polyculy.dbo.shared_events SET organizer_user_id = :newOrg, ownership_transfer_active = FALSE,
              ownership_transfer_deadline = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_event_id = :eid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
@@ -245,8 +245,8 @@ component {
         );
         // If new organizer was a pending participant, set them to accepted
         queryExecute(
-            "UPDATE shared_event_participants SET response_status = 'accepted', updated_at = CURRENT_TIMESTAMP
-             WHERE shared_event_id = :eid AND user_id = :uid",
+            "UPDATE polyculy.dbo.shared_event_participants SET response_status = 'accepted', updated_at = CURRENT_TIMESTAMP
+             WHERE polyculy.dbo.shared_event_id = :eid AND user_id = :uid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
                 uid: { value: arguments.newOrganizerId, cfsqltype: "cf_sql_integer" }
@@ -256,7 +256,7 @@ component {
 
     function initiateOwnershipTransfer(required numeric eventId, required string deadline) {
         queryExecute(
-            "UPDATE shared_events SET ownership_transfer_active = TRUE, ownership_transfer_deadline = :dl, updated_at = CURRENT_TIMESTAMP
+            "UPDATE polyculy.dbo.shared_events SET ownership_transfer_active = TRUE, ownership_transfer_deadline = :dl, updated_at = CURRENT_TIMESTAMP
              WHERE shared_event_id = :eid",
             {
                 eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
