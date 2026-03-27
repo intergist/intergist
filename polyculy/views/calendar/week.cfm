@@ -17,26 +17,26 @@
 
     <div class="calendar-controls">
         <div class="view-toggle-group">
-            <button class="view-toggle-btn" data-view="day" onclick="Polyculy.setView('day')">Day</button>
-            <button class="view-toggle-btn active" data-view="week" onclick="Polyculy.setView('week')">Week</button>
-            <button class="view-toggle-btn" data-view="month" onclick="Polyculy.setView('month')">Month</button>
+            <button class="view-toggle-btn" data-view="day" data-testid="view-day" onclick="Polyculy.setView('day')">Day</button>
+            <button class="view-toggle-btn active" data-view="week" data-testid="view-week" onclick="Polyculy.setView('week')">Week</button>
+            <button class="view-toggle-btn" data-view="month" data-testid="view-month" onclick="Polyculy.setView('month')">Month</button>
         </div>
         <div class="calendar-nav">
             <button class="btn-nav" onclick="Polyculy.navigateCalendar(-1)"><i class="fas fa-chevron-left"></i></button>
-            <span class="calendar-nav-title" id="calendarTitle">Loading...</span>
+            <span class="calendar-nav-title" id="calendarTitle" data-testid="calendar-nav-title">Loading...</span>
             <button class="btn-nav" onclick="Polyculy.navigateCalendar(1)"><i class="fas fa-chevron-right"></i></button>
         </div>
         <div class="view-toggle-group">
-            <button class="view-toggle-btn active" data-perspective="mine" onclick="Polyculy.setPerspective('mine')">Mine</button>
-            <button class="view-toggle-btn" data-perspective="our" onclick="Polyculy.setPerspective('our')">Our</button>
+            <button class="view-toggle-btn active" data-perspective="mine" data-testid="perspective-mine" onclick="Polyculy.setPerspective('mine')">Mine</button>
+            <button class="view-toggle-btn" data-perspective="our" data-testid="perspective-our" onclick="Polyculy.setPerspective('our')">Our</button>
         </div>
     </div>
 
-    <div class="calendar-grid week-view" id="calendarGrid">
+    <div class="calendar-grid week-view" id="calendarGrid" data-testid="calendar-grid">
         <div class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
     </div>
 
-    <div class="toggle-bar" id="toggleBar" style="display:none;"></div>
+    <div class="toggle-bar" id="toggleBar" data-testid="toggle-bar" style="display:none;"></div>
 </div>
 
 <script>

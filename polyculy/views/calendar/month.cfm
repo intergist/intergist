@@ -3,7 +3,7 @@
 <div class="page-container calendar-page">
     <div class="calendar-header">
         <div class="calendar-header-left">
-            <h2 class="page-title" id="calendarTitle">My Calendar</h2>
+            <h2 class="page-title" id="calendarTitle" data-testid="calendar-title">My Calendar</h2>
         </div>
         <div class="calendar-header-actions">
             <button class="btn btn-primary-purple btn-sm" onclick="openPersonalEventModal()">
@@ -17,31 +17,31 @@
 
     <div class="calendar-controls">
         <div class="view-toggle-group">
-            <button class="view-toggle-btn" data-view="day" onclick="Polyculy.setView('day')">Day</button>
-            <button class="view-toggle-btn" data-view="week" onclick="Polyculy.setView('week')">Week</button>
-            <button class="view-toggle-btn active" data-view="month" onclick="Polyculy.setView('month')">Month</button>
+            <button class="view-toggle-btn" data-view="day" data-testid="view-day" onclick="Polyculy.setView('day')">Day</button>
+            <button class="view-toggle-btn" data-view="week" data-testid="view-week" onclick="Polyculy.setView('week')">Week</button>
+            <button class="view-toggle-btn active" data-view="month" data-testid="view-month" onclick="Polyculy.setView('month')">Month</button>
         </div>
         <div class="calendar-nav">
             <button class="btn-nav" onclick="Polyculy.navigateCalendar(-1)"><i class="fas fa-chevron-left"></i></button>
-            <span class="calendar-nav-title" id="calendarNavTitle">Loading...</span>
+            <span class="calendar-nav-title" id="calendarNavTitle" data-testid="calendar-nav-title">Loading...</span>
             <button class="btn-nav" onclick="Polyculy.navigateCalendar(1)"><i class="fas fa-chevron-right"></i></button>
         </div>
         <div class="view-toggle-group">
-            <button class="view-toggle-btn active" data-perspective="mine" onclick="Polyculy.setPerspective('mine')">Mine</button>
-            <button class="view-toggle-btn" data-perspective="our" onclick="Polyculy.setPerspective('our')">Our</button>
+            <button class="view-toggle-btn active" data-perspective="mine" data-testid="perspective-mine" onclick="Polyculy.setPerspective('mine')">Mine</button>
+            <button class="view-toggle-btn" data-perspective="our" data-testid="perspective-our" onclick="Polyculy.setPerspective('our')">Our</button>
         </div>
     </div>
 
-    <div class="calendar-grid" id="calendarGrid">
+    <div class="calendar-grid" id="calendarGrid" data-testid="calendar-grid">
         <div class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
     </div>
 
     <!--- Toggle Bar for Our view --->
-    <div class="toggle-bar" id="toggleBar" style="display:none;"></div>
+    <div class="toggle-bar" id="toggleBar" data-testid="toggle-bar" style="display:none;"></div>
 </div>
 
 <!--- Personal Event Modal --->
-<div class="modal fade modal-polyculy" id="personalEventModal" tabindex="-1">
+<div class="modal fade modal-polyculy" id="personalEventModal" data-testid="personal-event-modal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -60,12 +60,12 @@
                     <div class="accordion-body">
                         <div class="mb-3">
                             <label class="form-label-poly">Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="peTitle" placeholder="e.g., Doctor's appointment" required>
+                            <input type="text" class="form-control" id="peTitle" data-testid="pe-title" placeholder="e.g., Doctor's appointment" required>
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-md-4">
                                 <label class="form-label-poly">Start Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="peStartDate" required>
+                                <input type="date" class="form-control" id="peStartDate" data-testid="pe-start-date" required>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label-poly">Hour</label>
@@ -114,12 +114,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label-poly">Event Details</label>
-                            <textarea class="form-control" id="peDetails" rows="2" placeholder="Optional notes..."></textarea>
+                            <textarea class="form-control" id="peDetails" data-testid="pe-details" rows="2" placeholder="Optional notes..."></textarea>
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label-poly">Address</label>
-                                <input type="text" class="form-control" id="peAddress" placeholder="Location">
+                                <input type="text" class="form-control" id="peAddress" data-testid="pe-address" placeholder="Location">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label-poly">Reminder</label>

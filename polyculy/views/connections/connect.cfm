@@ -13,7 +13,7 @@
                     <h5><i class="fas fa-user-plus me-2"></i>Link me up to</h5>
                 </div>
                 <div class="card-body-poly">
-                    <div id="connectionRows">
+                    <div id="connectionRows" data-testid="connection-rows">
                         <div class="connection-row">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-5">
@@ -39,7 +39,7 @@
                     <a href="##" class="add-another-link" onclick="addConnectionRow(); return false;">
                         <i class="fas fa-plus me-1"></i>Add Another Member
                     </a>
-                    <div class="form-message" id="connMessage" style="display:none;"></div>
+                    <div class="form-message" id="connMessage" data-testid="connection-message" style="display:none;"></div>
                     <button class="btn btn-primary-purple mt-3" onclick="sendAllConnectionRequests()">
                         <i class="fas fa-paper-plane me-1"></i>Send Connection Requests
                     </button>
@@ -54,7 +54,7 @@
                 <div class="card-header-poly">
                     <h5><i class="fas fa-heart me-2"></i>Your Polycule</h5>
                 </div>
-                <div class="card-body-poly" id="polyculeList">
+                <div class="card-body-poly" id="polyculeList" data-testid="polycule-list">
                     <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
                 </div>
             </div>

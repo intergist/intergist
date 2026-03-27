@@ -42,7 +42,7 @@ component {
 
         // Determine if this is a public page (no auth required)
         var publicPages = ["/index.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm"];
-        var publicAPIs = ["/api/auth.cfm"];
+        var publicAPIs = ["/api/auth.cfm", "/api/reset-seed.cfm"];
         var requestedPage = arguments.targetPage;
 
         var isPublic = false;

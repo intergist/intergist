@@ -56,29 +56,29 @@
         </div>
         <div class="navbar-actions">
             <cfif structKeyExists(attributes, "showNav") && attributes.showNav>
-                <a href="/views/connections/connect.cfm" class="nav-action-link" title="Polycule">
+                <a href="/views/connections/connect.cfm" class="nav-action-link" title="Polycule" data-testid="nav-polycule">
                     <i class="fas fa-users"></i>
                 </a>
-                <a href="/views/settings/timezone.cfm" class="nav-action-link" title="Settings">
+                <a href="/views/settings/timezone.cfm" class="nav-action-link" title="Settings" data-testid="nav-settings">
                     <i class="fas fa-cog"></i>
                 </a>
-                <div class="notification-bell" id="notificationBell" onclick="Polyculy.toggleNotifications()">
+                <div class="notification-bell" id="notificationBell" data-testid="notification-bell" onclick="Polyculy.toggleNotifications()">
                     <i class="fas fa-bell"></i>
-                    <span class="notification-badge" id="notifBadge" style="display:none;">0</span>
+                    <span class="notification-badge" id="notifBadge" data-testid="notification-badge" style="display:none;">0</span>
                 </div>
-                <div class="notification-panel" id="notificationPanel" style="display:none;">
+                <div class="notification-panel" id="notificationPanel" data-testid="notification-panel" style="display:none;">
                     <div class="notif-header">
                         <strong>Notifications</strong>
                         <a href="##" onclick="Polyculy.markAllNotificationsRead(); return false;">Mark all read</a>
                     </div>
-                    <div class="notif-list" id="notifList">
+                    <div class="notif-list" id="notifList" data-testid="notification-list">
                         <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
                     </div>
                 </div>
                 <div class="user-avatar-nav" title="#session.displayName#">
                     <span class="avatar-initials">#uCase(left(session.displayName, 1))#</span>
                 </div>
-                <a href="##" onclick="Polyculy.logout(); return false;" class="nav-action-link" title="Logout">
+                <a href="##" onclick="Polyculy.logout(); return false;" class="nav-action-link" title="Logout" data-testid="nav-logout">
                     <i class="fas fa-sign-out-alt"></i>
                 </a>
             </cfif>

@@ -24,30 +24,30 @@
             <p class="auth-subtitle">Easy management for scheduling complexity of polyamorous relationships</p>
         </div>
 
-        <form id="loginForm" onsubmit="return handleLogin(event)">
+        <form id="loginForm" data-testid="login-form" onsubmit="return handleLogin(event)">
             <div class="form-floating-group">
                 <div class="input-icon-wrap">
                     <i class="fas fa-envelope input-icon"></i>
-                    <input type="email" id="loginEmail" class="form-control" placeholder="Email" required autocomplete="email">
+                    <input type="email" id="loginEmail" data-testid="login-email" class="form-control" placeholder="Email" required autocomplete="email">
                 </div>
             </div>
             <div class="form-floating-group">
                 <div class="input-icon-wrap">
                     <i class="fas fa-lock input-icon"></i>
-                    <input type="password" id="loginPassword" class="form-control" placeholder="Password" required autocomplete="current-password">
+                    <input type="password" id="loginPassword" data-testid="login-password" class="form-control" placeholder="Password" required autocomplete="current-password">
                     <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
             </div>
-            <div class="form-message" id="loginMessage" style="display:none;"></div>
-            <button type="submit" class="btn btn-primary-purple w-100" id="loginBtn">Log In</button>
+            <div class="form-message" id="loginMessage" data-testid="login-message" style="display:none;"></div>
+            <button type="submit" class="btn btn-primary-purple w-100" id="loginBtn" data-testid="login-button">Log In</button>
         </form>
 
         <div class="auth-links">
-            <a href="/views/auth/recovery.cfm">Forgot password?</a>
+            <a href="/views/auth/recovery.cfm" data-testid="forgot-password-link">Forgot password?</a>
             <span class="auth-link-divider">&middot;</span>
-            Not a member? <a href="/views/auth/signup.cfm"><strong>Sign up</strong></a>
+            Not a member? <a href="/views/auth/signup.cfm" data-testid="signup-link"><strong>Sign up</strong></a>
         </div>
     </div>
 </div>

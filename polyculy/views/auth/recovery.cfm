@@ -16,10 +16,10 @@
             <div class="form-floating-group">
                 <div class="input-icon-wrap">
                     <i class="fas fa-envelope input-icon"></i>
-                    <input type="email" id="recoveryEmail" class="form-control" placeholder="Email" required>
+                    <input type="email" id="recoveryEmail" data-testid="recovery-email" class="form-control" placeholder="Email" required>
                 </div>
             </div>
-            <div class="form-message" id="recoveryMessage" style="display:none;"></div>
+            <div class="form-message" id="recoveryMessage" data-testid="recovery-message" style="display:none;"></div>
             <button type="submit" class="btn btn-primary-purple w-100" id="recoveryBtn">Continue</button>
         </form>
 

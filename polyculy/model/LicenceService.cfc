@@ -58,4 +58,20 @@ component {
         );
     }
 
+    /** Alias used by licences.cfm API handler */
+    function validate(required string code) {
+        return validateCode(arguments.code);
+    }
+
+    /** Get available (unredeemed, ungifted) licences for a user to gift */
+    function getAvailableForUser(required numeric userId) {
+        return queryExecute(
+            "SELECT licence_id, licence_code, licence_type, status, created_at
+             FROM licences
+             WHERE status = 'available'
+             ORDER BY created_at DESC",
+            {}
+        );
+    }
+
 }

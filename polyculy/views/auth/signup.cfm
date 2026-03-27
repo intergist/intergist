@@ -20,18 +20,18 @@
                 <div class="form-floating-group">
                     <div class="input-icon-wrap">
                         <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="signupEmail" class="form-control" placeholder="Email Address" required>
+                        <input type="email" id="signupEmail" data-testid="signup-email" class="form-control" placeholder="Email Address" required>
                     </div>
                 </div>
                 <div class="form-floating-group">
                     <div class="input-icon-wrap">
                         <i class="fas fa-key input-icon"></i>
-                        <input type="text" id="signupLicenceCode" class="form-control" placeholder="Licence Code" required>
+                        <input type="text" id="signupLicenceCode" data-testid="signup-licence" class="form-control" placeholder="Licence Code" required>
                     </div>
                 </div>
                 <p class="auth-helper-text">Enter a licence code you received by gift, promo, or purchase.</p>
                 <p class="auth-helper-text" style="font-size:0.75rem;">New users may receive their own licence for free during promo/seeding periods; additional licences for partners may require a purchased pack.</p>
-                <div class="form-message" id="signupMessage1" style="display:none;"></div>
+                <div class="form-message" id="signupMessage1" data-testid="signup-message" style="display:none;"></div>
                 <button type="submit" class="btn btn-primary-purple w-100" id="signupBtn1">Continue</button>
             </form>
         </div>
