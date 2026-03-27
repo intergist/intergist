@@ -1,0 +1,22 @@
+1
+00:00:05,000 --> 00:00:07,000
+Normal subtitle line.
+
+2
+00:00:08,200 --> INVALID_TIMESTAMP
+This has an invalid end timestamp.
+
+3
+This line is missing a timestamp entirely.
+
+4
+00:00:15,500 --> 00:00:10,000
+End time before start time.
+
+5
+00:00:20,000 --> 00:00:22,000
+Another normal line after errors.
+
+6
+99:99:99,999 --> 99:99:99,999
+Absurd timestamp values.

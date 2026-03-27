@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "scifionly.example.demo",
+  "title": "Demo Sci-Fi Film",
+  "releaseYear": 2026,
+  "locale": "en-US",
+  "referenceTrack": {
+    "file": "movie.srt",
+    "type": "srt",
+    "language": "en"
+  },
+  "riffTrack": {
+    "file": "riffs.srt",
+    "type": "srt",
+    "language": "en"
+  },
+  "timing": {
+    "warningLeadInMs": 1500,
+    "minParticipationWindowMs": 2500,
+    "maxUserRiffMs": 7000
+  },
+  "sync": {
+    "anchorStrategy": "hybrid_audio_and_text",
+    "driftToleranceMs": 400,
+    "lockConfidenceThreshold": 0.85
+  }
+}

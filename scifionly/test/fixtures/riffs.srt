@@ -1,0 +1,11 @@
+1
+00:00:10,900 --> 00:00:13,200
+[APP][SPEAK] Translation: famous last words.
+
+2
+00:00:18,300 --> 00:00:21,300
+[APP][DISPLAY] Yep, split the party. Galaxy-brain move.
+
+3
+00:00:28,700 --> 00:00:31,500
+[APP][SPEAK] If this ship has eggs, walk away.

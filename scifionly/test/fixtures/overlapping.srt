@@ -1,0 +1,19 @@
+1
+00:00:05,000 --> 00:00:10,000
+First subtitle with long duration.
+
+2
+00:00:07,000 --> 00:00:12,000
+This overlaps with the first subtitle.
+
+3
+00:00:11,000 --> 00:00:15,000
+This overlaps with the second subtitle.
+
+4
+00:00:20,000 --> 00:00:25,000
+This one stands alone.
+
+5
+00:00:22,000 --> 00:00:27,000
+This overlaps with subtitle 4.
